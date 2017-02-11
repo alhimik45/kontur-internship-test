@@ -62,7 +62,8 @@ namespace Kontur.GameStats.Server.Logic
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
             Dictionary<string, MatchInfo> tmp;
-            return _matches.TryGetValue(endpoint, out tmp) ? tmp.Get(timestamp) : null;
+            _matches.TryGetValue(endpoint, out tmp);
+            return tmp?.Get(timestamp);
         }
 
         public ServerStatsInfo GetStats(string endpoint)
@@ -98,27 +99,7 @@ namespace Kontur.GameStats.Server.Logic
 
             internalStats.Update(time, info);
 
-            var top5Modes = oldStats.Top5GameModes.ToList().UpdateTop(5,
-                m => internalStats.GameModeFrequency[m],
-                m => m,
-                info.GameMode);
-            var top5Maps = oldStats.Top5Maps.ToList().UpdateTop(5,
-                m => internalStats.MapFrequency[m],
-                m => m,
-                info.Map);
-
-            var totalMatches = oldStats.TotalMatchesPlayed + 1;
-            var newStats = new ServerStatsInfo
-            {
-                TotalMatchesPlayed = totalMatches,
-                Top5Maps = top5Maps,
-                Top5GameModes = top5Modes,
-                Name = _servers[endpoint].Name,
-                MaximumMatchesPerDay = Math.Max(oldStats.MaximumMatchesPerDay, internalStats.MatchesInLastDay),
-                AverageMatchesPerDay = (double)totalMatches / internalStats.DaysWithMatchesCount,
-                MaximumPopulation = Math.Max(oldStats.MaximumPopulation, info.Scoreboard.Count),
-                AveragePopulation = (double)internalStats.TotalPopulation / totalMatches
-            };
+            var newStats = oldStats.CalcNew(_servers[endpoint].Name, info, internalStats);
 
             UpdateRecentMatchesReport(endpoint, timestamp, info);
             UpdatePopularServersReport(endpoint, newStats);

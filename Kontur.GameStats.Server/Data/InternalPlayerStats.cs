@@ -13,12 +13,12 @@ namespace Kontur.GameStats.Server.Data
         public Dictionary<string, int> ServerFrequency { get; } = new Dictionary<string, int>();
         public Dictionary<string, int> GameModeFrequency { get; } = new Dictionary<string, int>();
 
-        public void Update(DateTime currentDay, int place, MatchInfo matchInfo, PlayerMatchInfo info)
+        public void Update(DateTime time, int place, MatchInfo matchInfo, PlayerMatchInfo info)
         {
             var totalPlayers = matchInfo.Scoreboard.Count;
             var playersBelowCurrent = totalPlayers - place;
             var scoreboardPercent = (double)playersBelowCurrent / (totalPlayers - 1) * 100;
-            MatchesPerDay[currentDay] = MatchesPerDay.Get(currentDay) + 1;
+            MatchesPerDay[time.Date] = MatchesPerDay.Get(time.Date) + 1;
             TotalScoreboard += scoreboardPercent;
             TotalKills += info.Kills;
             TotalDeaths += info.Deaths;

@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using System.Collections.Generic;
 using Kontur.GameStats.Server.Data;
+using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class StatisticsManager
     {
-
         private readonly ServerStatistics _serverStatistics;
         private readonly PlayerStatistics _playerStatistics;
 
@@ -17,33 +15,17 @@ namespace Kontur.GameStats.Server.Logic
             _playerStatistics = playerStatistics;
         }
 
-        private static bool IsValidEndpoint(string endpoint)
-        {
-            var parts = endpoint.Split("-".ToCharArray());
-            if (parts.Length != 2) return false;
-            if (Uri.CheckHostName(parts[0]) == UriHostNameType.Unknown) return false;
-            int port;
-            return int.TryParse(parts[1], out port);
-        }
-
-        private static bool IsValidTimestamp(string timestamp)
-        {
-            DateTime date;
-            return DateTime.TryParseExact(timestamp, "yyyy-MM-ddTHH:mm:ssZ", null,
-                DateTimeStyles.None, out date);
-        }
-
         public bool PutServerInfo(string endpoint, AdvertiseInfo info)
         {
-            if (!IsValidEndpoint(endpoint) || info.IsNotFull()) return false;
+            if (!endpoint.IsValidEndpoint() || info.IsNotFull()) return false;
             _serverStatistics.PutAdvertise(endpoint, info);
             return true;
         }
 
         public bool PutMatchInfo(string endpoint, string timestamp, MatchInfo info)
         {
-            if (info.IsNotFull() || !IsValidEndpoint(endpoint) ||
-                !IsValidTimestamp(timestamp) || !_serverStatistics.HasAdvertise(endpoint) ||
+            if (info.IsNotFull() || !endpoint.IsValidEndpoint() ||
+                !timestamp.IsValidTimestamp() || !_serverStatistics.HasAdvertise(endpoint) ||
                 _serverStatistics.GetMatch(endpoint, timestamp) != null)
             {
                 return false;

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
@@ -17,18 +16,6 @@ namespace Kontur.GameStats.Server.Logic
         public PlayerStatistics(int maxReportSize)
         {
             _maxReportSize = maxReportSize;
-        }
-
-        private static string UpdateFavorite(IDictionary<string, int> frequency, string updatedValue, string oldValue)
-        {
-            var currentUsesCount = frequency.Get(updatedValue) + 1;
-            frequency[updatedValue] = currentUsesCount;
-            if (oldValue == null)
-            {
-                return updatedValue;
-            }
-            var favoriveUsesCount = frequency[oldValue];
-            return currentUsesCount > favoriveUsesCount ? updatedValue : oldValue;
         }
 
         public void AddMatchInfo(string endpoint, string timestamp, MatchInfo info)
@@ -54,8 +41,6 @@ namespace Kontur.GameStats.Server.Logic
             var info = matchInfo.Scoreboard[index];
             var place = index + 1;
             var playerName = info.Name.ToLower();
-            var time = timestamp.ToUtc();
-            var currentDay = time.Date;
             PlayerStatsInfo oldStats;
             InternalPlayerStats internalStats;
             if (!_stats.TryGetValue(playerName, out oldStats))
@@ -69,22 +54,9 @@ namespace Kontur.GameStats.Server.Logic
                 internalStats = _internalStats[playerName];
             }
 
-            internalStats.Update(currentDay, place, matchInfo, info);
+            internalStats.Update(timestamp.ToUtc(), place, matchInfo, info);
 
-            var totalMatches = oldStats.TotalMatchesPlayed + 1;
-            var newStats = new PlayerStatsInfo
-            {
-                TotalMatchesPlayed = totalMatches,
-                LastMatchPlayed = oldStats.GetLastTimePlayed(timestamp),
-                UniqueServers = internalStats.ServerFrequency.Count,
-                TotalMatchesWon = oldStats.TotalMatchesWon + (place == 1 ? 1 : 0),
-                FavoriteServer = UpdateFavorite(internalStats.ServerFrequency, endpoint, oldStats.FavoriteServer),
-                FavoriteGameMode = UpdateFavorite(internalStats.GameModeFrequency, matchInfo.GameMode, oldStats.FavoriteGameMode),
-                AverageScoreboardPercent = internalStats.TotalScoreboard / totalMatches,
-                MaximumMatchesPerDay = Math.Max(oldStats.MaximumMatchesPerDay, internalStats.MatchesPerDay[currentDay]),
-                AverageMatchesPerDay = (double)totalMatches / internalStats.MatchesPerDay.Count,
-                KillToDeathRatio = (double)internalStats.TotalKills / internalStats.TotalDeaths
-            };
+            var newStats = oldStats.CalcNew(endpoint, timestamp, place, internalStats, matchInfo, info);
 
             if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
             {
