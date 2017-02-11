@@ -82,9 +82,9 @@ namespace Kontur.GameStats.Server.Logic
 
         private void CalcStats(string endpoint, string timestamp, MatchInfo info)
         {
+            var time = timestamp.ToUtc();
             ServerStatsInfo oldStats;
             InternalServerStats internalStats;
-            var time = timestamp.ToUtc();
             if (!_stats.TryGetValue(endpoint, out oldStats))
             {
                 internalStats = new InternalServerStats { LastMatchDay = time.Date };
@@ -96,19 +96,8 @@ namespace Kontur.GameStats.Server.Logic
                 internalStats = _internalStats[endpoint];
             }
 
-            if (time.Date == internalStats.LastMatchDay)
-            {
-                internalStats.MatchesInLastDay += 1;
-            }
-            else
-            {
-                internalStats.DaysWithMatchesCount += 1;
-                internalStats.LastMatchDay = time.Date;
-                internalStats.MatchesInLastDay = 1;
-            }
-            internalStats.TotalPopulation += info.Scoreboard.Count;
-            internalStats.GameModeFrequency[info.GameMode] = internalStats.GameModeFrequency.Get(info.GameMode) + 1;
-            internalStats.MapFrequency[info.Map] = internalStats.MapFrequency.Get(info.Map) + 1;
+            internalStats.Update(time, info);
+
             var top5Modes = oldStats.Top5GameModes.ToList().UpdateTop(5,
                 m => internalStats.GameModeFrequency[m],
                 m => m,
@@ -118,19 +107,17 @@ namespace Kontur.GameStats.Server.Logic
                 m => m,
                 info.Map);
 
-
             var totalMatches = oldStats.TotalMatchesPlayed + 1;
-
             var newStats = new ServerStatsInfo
             {
-                Name = _servers[endpoint].Name,
                 TotalMatchesPlayed = totalMatches,
+                Top5Maps = top5Maps,
+                Top5GameModes = top5Modes,
+                Name = _servers[endpoint].Name,
                 MaximumMatchesPerDay = Math.Max(oldStats.MaximumMatchesPerDay, internalStats.MatchesInLastDay),
                 AverageMatchesPerDay = (double)totalMatches / internalStats.DaysWithMatchesCount,
                 MaximumPopulation = Math.Max(oldStats.MaximumPopulation, info.Scoreboard.Count),
-                AveragePopulation = (double)internalStats.TotalPopulation / totalMatches,
-                Top5Maps = top5Maps,
-                Top5GameModes = top5Modes
+                AveragePopulation = (double)internalStats.TotalPopulation / totalMatches
             };
 
             UpdateRecentMatchesReport(endpoint, timestamp, info);
