@@ -1,11 +1,6 @@
-﻿using System;
-using Nancy;
-using Nancy.Bootstrapper;
+﻿using Nancy;
 using Nancy.ErrorHandling;
 using Nancy.Responses;
-using Nancy.Responses.Negotiation;
-using Nancy.TinyIoc;
-using Nancy.ViewEngines;
 
 namespace Kontur.GameStats.Server
 {

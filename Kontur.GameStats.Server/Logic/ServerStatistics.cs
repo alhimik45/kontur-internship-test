@@ -4,19 +4,18 @@ using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
 
-namespace Kontur.GameStats.Server
+namespace Kontur.GameStats.Server.Logic
 {
     public class ServerStatistics
     {
-        private int _maxReportSize;
+        private readonly int _maxReportSize;
 
-        private Dictionary<string, AdvertiseInfo> _servers = new Dictionary<string, AdvertiseInfo>();
-        private Dictionary<string, Dictionary<string, MatchInfo>> _matches = new Dictionary<string, Dictionary<string, MatchInfo>>();
-        private Dictionary<string, ServerStatsInfo> _stats = new Dictionary<string, ServerStatsInfo>();
-        private Dictionary<string, InternalServerStats> _internalStats = new Dictionary<string, InternalServerStats>();
-        private List<RecentMatchesItem> _recentMatches = new List<RecentMatchesItem>();
-        private List<PopularServersItem> _popularServers = new List<PopularServersItem>();
-
+        private readonly Dictionary<string, AdvertiseInfo> _servers = new Dictionary<string, AdvertiseInfo>();
+        private readonly Dictionary<string, Dictionary<string, MatchInfo>> _matches = new Dictionary<string, Dictionary<string, MatchInfo>>();
+        private readonly Dictionary<string, ServerStatsInfo> _stats = new Dictionary<string, ServerStatsInfo>();
+        private readonly Dictionary<string, InternalServerStats> _internalStats = new Dictionary<string, InternalServerStats>();
+        private readonly List<RecentMatchesItem> _recentMatches = new List<RecentMatchesItem>();
+        private readonly List<PopularServersItem> _popularServers = new List<PopularServersItem>();
 
         public ServerStatistics(int maxReportSize)
         {
@@ -35,18 +34,18 @@ namespace Kontur.GameStats.Server
 
         public AdvertiseInfo GetAdvertise(string endpoint)
         {
-            AdvertiseInfo info;
-            _servers.TryGetValue(endpoint, out info);
-            return info;
+            return _servers.Get(endpoint);
         }
 
         public List<ServersInfoItem> GetAll()
         {
-            return _servers.Select(kv => new ServersInfoItem
-            {
-                Endpoint = kv.Key,
-                Info = kv.Value
-            }).ToList();
+            return _servers
+                .Select(kv => new ServersInfoItem
+                {
+                    Endpoint = kv.Key,
+                    Info = kv.Value
+                })
+                .ToList();
         }
 
         public void PutMatch(string endpoint, string timestamp, MatchInfo info)
@@ -63,17 +62,22 @@ namespace Kontur.GameStats.Server
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
             Dictionary<string, MatchInfo> tmp;
-            if (!_matches.TryGetValue(endpoint, out tmp)) return null;
-            MatchInfo info;
-            tmp.TryGetValue(timestamp, out info);
-            return info;
+            return _matches.TryGetValue(endpoint, out tmp) ? tmp.Get(timestamp) : null;
         }
 
         public ServerStatsInfo GetStats(string endpoint)
         {
-            ServerStatsInfo stats;
-            _stats.TryGetValue(endpoint, out stats);
-            return stats;
+            return _stats.Get(endpoint);
+        }
+
+        public List<RecentMatchesItem> GetRecentMatches(int count)
+        {
+            return _recentMatches.Take(count).ToList();
+        }
+
+        public List<PopularServersItem> GetPopularServers(int count)
+        {
+            return _popularServers.Take(count).ToList();
         }
 
         private void CalcStats(string endpoint, string timestamp, MatchInfo info)
@@ -103,22 +107,17 @@ namespace Kontur.GameStats.Server
                 internalStats.MatchesInLastDay = 1;
             }
             internalStats.TotalPopulation += info.Scoreboard.Count;
-            if (internalStats.GameModeFrequency.ContainsKey(info.GameMode))//TODO
-            {
-                internalStats.GameModeFrequency[info.GameMode] += 1;
-            }
-            else
-            {
-                internalStats.GameModeFrequency[info.GameMode] = 1;
-            }
-            if (internalStats.MapFrequency.ContainsKey(info.Map))//TODO
-            {
-                internalStats.MapFrequency[info.Map] += 1;
-            }
-            else
-            {
-                internalStats.MapFrequency[info.Map] = 1;
-            }
+            internalStats.GameModeFrequency[info.GameMode] = internalStats.GameModeFrequency.Get(info.GameMode) + 1;
+            internalStats.MapFrequency[info.Map] = internalStats.MapFrequency.Get(info.Map) + 1;
+            var top5Modes = oldStats.Top5GameModes.ToList().UpdateTop(5,
+                m => internalStats.GameModeFrequency[m],
+                m => m,
+                info.GameMode);
+            var top5Maps = oldStats.Top5Maps.ToList().UpdateTop(5,
+                m => internalStats.MapFrequency[m],
+                m => m,
+                info.Map);
+
 
             var totalMatches = oldStats.TotalMatchesPlayed + 1;
 
@@ -130,16 +129,8 @@ namespace Kontur.GameStats.Server
                 AverageMatchesPerDay = (double)totalMatches / internalStats.DaysWithMatchesCount,
                 MaximumPopulation = Math.Max(oldStats.MaximumPopulation, info.Scoreboard.Count),
                 AveragePopulation = (double)internalStats.TotalPopulation / totalMatches,
-                Top5Maps = internalStats.MapFrequency
-                    .OrderByDescending(kv => kv.Value)
-                    .Take(5)
-                    .Select(kv => kv.Key)
-                    .ToList(),
-                Top5GameModes = internalStats.GameModeFrequency
-                    .OrderByDescending(kv => kv.Value)
-                    .Take(5)
-                    .Select(kv => kv.Key)
-                    .ToList()
+                Top5Maps = top5Maps,
+                Top5GameModes = top5Modes
             };
 
             UpdateRecentMatchesReport(endpoint, timestamp, info);
@@ -172,16 +163,6 @@ namespace Kontur.GameStats.Server
                     Name = info.Name,
                     AverageMatchesPerDay = info.AverageMatchesPerDay
                 });
-        }
-
-        public List<RecentMatchesItem> GetRecentMatches(int count)
-        {
-            return _recentMatches.Take(count).ToList();
-        }
-
-        public List<PopularServersItem> GetPopularServers(int count)
-        {
-            return _popularServers.Take(count).ToList();
         }
     }
 }

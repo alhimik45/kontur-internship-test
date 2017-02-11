@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Kontur.GameStats.Server;
 using Kontur.GameStats.Server.Data;
 
 namespace Kontur.GameStats.Tests
@@ -40,7 +39,7 @@ namespace Kontur.GameStats.Tests
             "2017-02-13T15:16:02Z",
             "2017-02-13T15:16:03Z",
             "2017-02-13T15:16:04Z",
-            "2017-02-13T15:16:05Z",
+            "2017-02-13T15:16:05Z"
         };
 
         public static List<MatchInfo> Matches = new List<MatchInfo>
@@ -67,7 +66,7 @@ namespace Kontur.GameStats.Tests
                         Frags = 2,
                         Kills = 2,
                         Deaths = 21
-                    },
+                    }
                 }
             },
             new MatchInfo
@@ -113,7 +112,7 @@ namespace Kontur.GameStats.Tests
                         Frags = 2,
                         Kills = 2,
                         Deaths = 21
-                    },
+                    }
                 }
             },
             new MatchInfo
@@ -177,7 +176,7 @@ namespace Kontur.GameStats.Tests
                         Frags = 2,
                         Kills = 2,
                         Deaths = 21
-                    },
+                    }
                 }
             },
             new MatchInfo
@@ -209,7 +208,7 @@ namespace Kontur.GameStats.Tests
                         Frags = 2,
                         Kills = 2,
                         Deaths = 21
-                    },
+                    }
                 }
             },
             new MatchInfo
@@ -234,7 +233,7 @@ namespace Kontur.GameStats.Tests
                         Frags = 20,
                         Kills = 21,
                         Deaths = 3
-                    },
+                    }
                 }
             },
             new MatchInfo
@@ -314,7 +313,7 @@ namespace Kontur.GameStats.Tests
         {
             TotalMatchesPlayed = 6,
             TotalMatchesWon = 4,
-            FavoriteServer = TestData.Endpoints[0],
+            FavoriteServer = Endpoints[0],
             UniqueServers = 2,
             FavoriteGameMode = "CTF",
             AverageScoreboardPercent = 75,

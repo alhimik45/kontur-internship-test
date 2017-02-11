@@ -11,28 +11,28 @@ using NUnit.Framework;
 namespace Kontur.GameStats.Tests
 {
     [TestFixture]
-    public class StatModule_should
+    public class StatModuleShould
     {
-        private Browser browser;
+        private Browser _browser;
 
-        private string serversInfoPath = "/servers/info";
-        private Func<int?, string> recentMatchesPath = (count) => "/reports/recent-matches" + (count.HasValue ? $"/{count.Value}" : "");
-        private Func<int?, string> bestPlayersPath = (count) => "/reports/best-players" + (count.HasValue ? $"/{count.Value}" : "");
-        private Func<int?, string> popularServersPath = (count) => "/reports/popular-servers" + (count.HasValue ? $"/{count.Value}" : "");
-        private Func<string, string> serverStatsPath = (endpoint) => $"/servers/{endpoint}/stats";
-        private Func<string, string> playerStatsPath = (name) => $"/players/{name}/stats";
-        private Func<string, string> advertisePath = (endpoint) => $"/servers/{endpoint}/info";
-        private Func<string, string, string> matchInfoPath = (endpoint, timestamp) => $"/servers/{endpoint}/matches/{timestamp}";
+        private readonly string _serversInfoPath = "/servers/info";
+        private readonly Func<int?, string> _recentMatchesPath = count => "/reports/recent-matches" + (count.HasValue ? $"/{count.Value}" : "");
+        private readonly Func<int?, string> _bestPlayersPath = count => "/reports/best-players" + (count.HasValue ? $"/{count.Value}" : "");
+        private readonly Func<int?, string> _popularServersPath = count => "/reports/popular-servers" + (count.HasValue ? $"/{count.Value}" : "");
+        private readonly Func<string, string> _serverStatsPath = endpoint => $"/servers/{endpoint}/stats";
+        private readonly Func<string, string> _playerStatsPath = name => $"/players/{name}/stats";
+        private readonly Func<string, string> _advertisePath = endpoint => $"/servers/{endpoint}/info";
+        private readonly Func<string, string, string> _matchInfoPath = (endpoint, timestamp) => $"/servers/{endpoint}/matches/{timestamp}";
 
         [SetUp]
         public void SetUp()
         {
-            browser = new Browser(new NancyBootstrapper());
+            _browser = new Browser(new NancyBootstrapper());
         }
 
         private BrowserResponse Get(string path)
         {
-            var result = browser.Get(path, with =>
+            var result = _browser.Get(path, with =>
             {
                 with.HttpRequest();
             });
@@ -41,7 +41,7 @@ namespace Kontur.GameStats.Tests
 
         private BrowserResponse SendAdvertise(string endpoint, AdvertiseInfo info)
         {
-            var result = browser.Put(advertisePath(endpoint), with =>
+            var result = _browser.Put(_advertisePath(endpoint), with =>
             {
                 with.HttpRequest();
                 with.JsonBody(info);
@@ -51,7 +51,7 @@ namespace Kontur.GameStats.Tests
 
         private BrowserResponse SendMatchInfo(string endpoint, string timestamp, MatchInfo info)
         {
-            var result = browser.Put(matchInfoPath(endpoint, timestamp), with =>
+            var result = _browser.Put(_matchInfoPath(endpoint, timestamp), with =>
              {
                  with.HttpRequest();
                  with.JsonBody(info);
@@ -237,7 +237,7 @@ namespace Kontur.GameStats.Tests
         [Test]
         public void returnBadRequest_onWrongAdvertiseInfo()
         {
-            var result = browser.Put(advertisePath(TestData.Endpoints[0]), with =>
+            var result = _browser.Put(_advertisePath(TestData.Endpoints[0]), with =>
             {
                 with.HttpRequest();
                 with.Body("{}", "application/json");
@@ -273,7 +273,7 @@ namespace Kontur.GameStats.Tests
         public void returnBadRequest_onWrongMatchInfo_afterAdvertise()
         {
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[0]);
-            var result = browser.Put(matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]), with =>
+            var result = _browser.Put(_matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]), with =>
             {
                 with.HttpRequest();
                 with.Body("{}", "application/json");
@@ -292,7 +292,7 @@ namespace Kontur.GameStats.Tests
         public void returnSameInfo_onGettingServerInfo_afterAdvertise()
         {
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[0]);
-            var result = Get(advertisePath(TestData.Endpoints[0]));
+            var result = Get(_advertisePath(TestData.Endpoints[0]));
             var recievedInfo = result.Body.DeserializeJson<AdvertiseInfo>();
             recievedInfo.ShouldBeEquivalentTo(TestData.Advertises[0]);
         }
@@ -300,14 +300,14 @@ namespace Kontur.GameStats.Tests
         [Test]
         public void returnNotFound_onGettingServerInfo_withoutAdvertise()
         {
-            var result = Get(advertisePath(TestData.Endpoints[0]));
+            var result = Get(_advertisePath(TestData.Endpoints[0]));
             result.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
         [Test]
         public void returnEmptyList_onGetingAllServers_withoutAnyAdvertise()
         {
-            var result = Get(serversInfoPath);
+            var result = Get(_serversInfoPath);
             var list = result.Body.DeserializeJson<List<ServersInfoItem>>();
             list.Should().HaveCount(0);
         }
@@ -315,7 +315,7 @@ namespace Kontur.GameStats.Tests
         [Test]
         public void returnEmptyList_onGetingAllServers_withoutAdvertises()
         {
-            var result = Get(serversInfoPath);
+            var result = Get(_serversInfoPath);
             var list = result.Body.DeserializeJson<List<ServersInfoItem>>();
 
             list.Should().HaveCount(0);
@@ -327,7 +327,7 @@ namespace Kontur.GameStats.Tests
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[0]);
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[1]);
             SendAdvertise(TestData.Endpoints[1], TestData.Advertises[2]);
-            var result = Get(serversInfoPath);
+            var result = Get(_serversInfoPath);
             var list = result.Body.DeserializeJson<List<ServersInfoItem>>();
 
             list.ShouldAllBeEquivalentTo(new List<ServersInfoItem>
@@ -351,7 +351,7 @@ namespace Kontur.GameStats.Tests
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[0]);
             SendMatchInfo(TestData.Endpoints[0], TestData.Timestamps[0], TestData.Matches[0]);
 
-            var result = Get(matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]));
+            var result = Get(_matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]));
 
             var info = result.Body.DeserializeJson<MatchInfo>();
 
@@ -362,7 +362,7 @@ namespace Kontur.GameStats.Tests
         public void returnNotFound_onGetingMatchInfo_withoutPuttingIt()
         {
             SendAdvertise(TestData.Endpoints[0], TestData.Advertises[0]);
-            var result = Get(matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]));
+            var result = Get(_matchInfoPath(TestData.Endpoints[0], TestData.Timestamps[0]));
 
             result.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
@@ -371,7 +371,7 @@ namespace Kontur.GameStats.Tests
         public void returnStats_onServerStatsRequest_afterSendingData()
         {
             SendStatsTestData();
-            var result = Get(serverStatsPath(TestData.Endpoints[0]));
+            var result = Get(_serverStatsPath(TestData.Endpoints[0]));
             var info = result.Body.DeserializeJson<ServerStatsInfo>();
             info.ShouldBeEquivalentTo(TestData.ServerStats, options => options.WithStrictOrdering());
         }
@@ -379,7 +379,7 @@ namespace Kontur.GameStats.Tests
         [Test]
         public void returnNotFound_onServerStatsRequest_withoutSendingData()
         {
-            var result = Get(serverStatsPath(TestData.Endpoints[0]));
+            var result = Get(_serverStatsPath(TestData.Endpoints[0]));
             result.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
@@ -387,7 +387,7 @@ namespace Kontur.GameStats.Tests
         public void returnStats_onPlayerStatsRequest_afterSendingData()
         {
             SendStatsTestData();
-            var result = Get(playerStatsPath("p1"));
+            var result = Get(_playerStatsPath("p1"));
             var info = result.Body.DeserializeJson<PlayerStatsInfo>();
             info.ShouldBeEquivalentTo(TestData.PlayerStats);
         }
@@ -395,7 +395,7 @@ namespace Kontur.GameStats.Tests
         [Test]
         public void returnNotFound_onPlayerStatsRequest_withoutSendingData()
         {
-            var result = Get(playerStatsPath("p1"));
+            var result = Get(_playerStatsPath("p1"));
             result.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
@@ -407,7 +407,7 @@ namespace Kontur.GameStats.Tests
         public void returnList_onGettingRecentMatchesReport(int? sentCount, int checkCount)
         {
             var matches = SendRecentMatchesReportTestData();
-            var result = Get(recentMatchesPath(sentCount));
+            var result = Get(_recentMatchesPath(sentCount));
             var recievedMatches = result.Body.DeserializeJson<List<RecentMatchesItem>>();
             recievedMatches.ShouldAllBeEquivalentTo(matches.Take(checkCount), options => options.WithStrictOrdering());
         }
@@ -420,7 +420,7 @@ namespace Kontur.GameStats.Tests
         public void returnList_onGettingBestPlayersReport(int? sentCount, int checkCount)
         {
             var matches = SendBestPlayerReportTestData();
-            var result = Get(bestPlayersPath(sentCount));
+            var result = Get(_bestPlayersPath(sentCount));
             var recievedMatches = result.Body.DeserializeJson<List<BestPlayersItem>>();
             recievedMatches.ShouldAllBeEquivalentTo(matches.Take(checkCount), options => options.WithStrictOrdering());
         }
@@ -433,7 +433,7 @@ namespace Kontur.GameStats.Tests
         public void returnList_onGettingPopularServersReport(int? sentCount, int checkCount)
         {
             var matches = SendPopularServersReportTestData();
-            var result = Get(popularServersPath(sentCount));
+            var result = Get(_popularServersPath(sentCount));
             var recievedMatches = result.Body.DeserializeJson<List<PopularServersItem>>();
             recievedMatches.ShouldAllBeEquivalentTo(matches.Take(checkCount), options => options.WithStrictOrdering());
         }

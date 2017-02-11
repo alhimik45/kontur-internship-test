@@ -14,7 +14,7 @@ namespace Kontur.GameStats.Server
             commandLineParser
                 .Setup(options => options.Prefix)
                 .As("prefix")
-                .SetDefault("http://+:8080/kek/")//TODO return to /
+                .SetDefault("http://+:8080/")
                 .WithDescription("HTTP prefix to listen on");
 
             commandLineParser

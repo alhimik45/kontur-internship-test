@@ -6,7 +6,7 @@ namespace Kontur.GameStats.Server.Extensions
 {
     public static class Collection
     {
-        public static void UpdateTop<TItem, TCmpField, TUniqField>(
+        public static List<TItem> UpdateTop<TItem, TCmpField, TUniqField>(
             this List<TItem> coll,
             int maxTopSize,
             Func<TItem, TCmpField> comparedParam,
@@ -22,14 +22,26 @@ namespace Kontur.GameStats.Server.Extensions
                     coll.RemoveAt(coll.Count - 1);
                     insertNewRecent = true;
                 }
-                if (!insertNewRecent) return;
-                coll.Add(item);
+                if (!insertNewRecent) return coll;
             }
             else
             {
-                coll[itemIdx] = item;
+                coll.RemoveAt(itemIdx);
             }
-            coll.Sort((i1, i2) => comparedParam(i2).CompareTo(comparedParam(i1)));
+            itemIdx = coll.BinarySearch(item, Comparer<TItem>.Create((i1, i2) => comparedParam(i2).CompareTo(comparedParam(i1))));
+            if (itemIdx < 0)
+            {
+                itemIdx = ~itemIdx;
+            }
+            coll.Insert(itemIdx, item);
+            return coll;
+        }
+
+        public static TValue Get<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key)
+        {
+            TValue val;
+            dict.TryGetValue(key, out val);
+            return val;
         }
     }
 }

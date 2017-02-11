@@ -1,14 +1,13 @@
-﻿using System;
-using Kontur.GameStats.Server.Data;
+﻿using Kontur.GameStats.Server.Data;
+using Kontur.GameStats.Server.Logic;
 using Nancy;
-using Nancy.Bootstrapper;
 using Nancy.ModelBinding;
 
 namespace Kontur.GameStats.Server
 {
     public class StatModule : NancyModule
     {
-        private StatisticsManager _statisticsManager;
+        private readonly StatisticsManager _statisticsManager;
 
         public StatModule(StatisticsManager statisticsManager)
         {

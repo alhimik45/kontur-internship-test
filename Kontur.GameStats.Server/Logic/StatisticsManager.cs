@@ -1,24 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 using Kontur.GameStats.Server.Data;
 
-namespace Kontur.GameStats.Server
+namespace Kontur.GameStats.Server.Logic
 {
     public class StatisticsManager
     {
-        
+
         private readonly ServerStatistics _serverStatistics;
         private readonly PlayerStatistics _playerStatistics;
 
         public StatisticsManager(ServerStatistics serverStatistics, PlayerStatistics playerStatistics)
         {
-            Console.WriteLine("kekd");
             _serverStatistics = serverStatistics;
             _playerStatistics = playerStatistics;
         }
 
-        private bool IsValidEndpoint(string endpoint)
+        private static bool IsValidEndpoint(string endpoint)
         {
             var parts = endpoint.Split("-".ToCharArray());
             if (parts.Length != 2) return false;
@@ -27,11 +26,11 @@ namespace Kontur.GameStats.Server
             return int.TryParse(parts[1], out port);
         }
 
-        private bool IsValidTimestamp(string timestamp)
+        private static bool IsValidTimestamp(string timestamp)
         {
             DateTime date;
             return DateTime.TryParseExact(timestamp, "yyyy-MM-ddTHH:mm:ssZ", null,
-                System.Globalization.DateTimeStyles.None, out date);
+                DateTimeStyles.None, out date);
         }
 
         public bool PutServerInfo(string endpoint, AdvertiseInfo info)
@@ -61,7 +60,7 @@ namespace Kontur.GameStats.Server
 
         public MatchInfo GetMatchInfo(string endpoint, string timestamp)
         {
-            return _serverStatistics.GetMatch(endpoint,timestamp);
+            return _serverStatistics.GetMatch(endpoint, timestamp);
         }
 
         public List<ServersInfoItem> GetAllServersInfo()

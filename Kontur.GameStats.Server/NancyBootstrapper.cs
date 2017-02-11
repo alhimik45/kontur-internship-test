@@ -1,4 +1,5 @@
 ﻿using System;
+using Kontur.GameStats.Server.Logic;
 using Nancy;
 using Nancy.Bootstrapper;
 using Nancy.Responses;
@@ -10,11 +11,6 @@ namespace Kontur.GameStats.Server
     public class NancyBootstrapper : DefaultNancyBootstrapper
     {
         private const int MaxReportSize = 50;
-
-        public NancyBootstrapper():base()
-        {
-            Console.WriteLine("flkdf");
-        }
 
         protected override void ConfigureApplicationContainer(TinyIoCContainer container)
         {
@@ -39,7 +35,7 @@ namespace Kontur.GameStats.Server
             get
             {
                 return NancyInternalConfiguration.WithOverrides(
-                    (c) =>
+                    c =>
                     {
                         c.ResponseProcessors.Clear();
                         c.ResponseProcessors.Add(typeof(JsonProcessor));

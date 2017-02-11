@@ -1,20 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
 
-namespace Kontur.GameStats.Server
+namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
-        private int _maxReportSize;
+        private readonly int _maxReportSize;
 
-        private Dictionary<string, PlayerStatsInfo> _stats = new Dictionary<string, PlayerStatsInfo>();
-        private Dictionary<string, InternalPlayerStats> _internalStats = new Dictionary<string, InternalPlayerStats>();
-        private List<BestPlayersItem> _bestPlayers = new List<BestPlayersItem>();
-
+        private readonly Dictionary<string, PlayerStatsInfo> _stats = new Dictionary<string, PlayerStatsInfo>();
+        private readonly Dictionary<string, InternalPlayerStats> _internalStats = new Dictionary<string, InternalPlayerStats>();
+        private readonly List<BestPlayersItem> _bestPlayers = new List<BestPlayersItem>();
 
         public PlayerStatistics(int maxReportSize)
         {
@@ -27,6 +25,16 @@ namespace Kontur.GameStats.Server
             {
                 CalcPlayerStats(endpoint, timestamp, i, info);
             }
+        }
+
+        public PlayerStatsInfo GetStats(string name)
+        {
+            return _stats.Get(name.ToLower());
+        }
+
+        public List<BestPlayersItem> GetBestPlayers(int count)
+        {
+            return _bestPlayers.Take(count).ToList();
         }
 
         private void CalcPlayerStats(string endpoint, string timestamp, int index, MatchInfo matchInfo)
@@ -56,9 +64,7 @@ namespace Kontur.GameStats.Server
             internalStats.TotalKills += info.Kills;
             internalStats.TotalDeaths += info.Deaths;
 
-            int currentUsesCount;
-            internalStats.ServerFrequency.TryGetValue(endpoint, out currentUsesCount);
-            currentUsesCount += 1;
+            var currentUsesCount = internalStats.ServerFrequency.Get(endpoint) + 1;
             internalStats.ServerFrequency[endpoint] = currentUsesCount;
             string favoriteServer;
             if (oldStats.FavoriteServer == null)
@@ -71,9 +77,7 @@ namespace Kontur.GameStats.Server
                 favoriteServer = currentUsesCount > favoriveUsesCount ? endpoint : oldStats.FavoriteServer;
             }
 
-            int currentModeMatchesCount;
-            internalStats.GameModeFrequency.TryGetValue(matchInfo.GameMode, out currentModeMatchesCount);
-            currentModeMatchesCount += 1;
+            var currentModeMatchesCount = internalStats.GameModeFrequency.Get(matchInfo.GameMode) + 1;
             internalStats.GameModeFrequency[matchInfo.GameMode] = currentModeMatchesCount;
             string favoriteGameMode;
             if (oldStats.FavoriteGameMode == null)
@@ -101,9 +105,7 @@ namespace Kontur.GameStats.Server
             }
 
             var currentDay = time.Date;
-            int currentMatchesCount;
-            internalStats.MatchesPerDay.TryGetValue(currentDay, out currentMatchesCount);
-            currentMatchesCount += 1;
+            var currentMatchesCount = internalStats.MatchesPerDay.Get(currentDay) + 1;
             internalStats.MatchesPerDay[currentDay] = currentMatchesCount;
 
             var totalMatches = oldStats.TotalMatchesPlayed + 1;
@@ -115,7 +117,7 @@ namespace Kontur.GameStats.Server
                 FavoriteServer = favoriteServer,
                 UniqueServers = internalStats.ServerFrequency.Count,
                 FavoriteGameMode = favoriteGameMode,
-                AverageScoreboardPercent = (double)internalStats.TotalScoreboard / totalMatches,
+                AverageScoreboardPercent = internalStats.TotalScoreboard / totalMatches,
                 MaximumMatchesPerDay = Math.Max(oldStats.MaximumMatchesPerDay, currentMatchesCount),
                 AverageMatchesPerDay = (double)totalMatches / internalStats.MatchesPerDay.Count,
                 LastMatchPlayed = lastTime,
@@ -140,18 +142,6 @@ namespace Kontur.GameStats.Server
                     Name = name,
                     KillToDeathRatio = info.KillToDeathRatio
                 });
-        }
-
-        public PlayerStatsInfo GetStats(string name)
-        {
-            PlayerStatsInfo stats;
-            _stats.TryGetValue(name.ToLower(), out stats);
-            return stats;
-        }
-
-        public List<BestPlayersItem> GetBestPlayers(int count)
-        {
-            return _bestPlayers.Take(count).ToList();
         }
     }
 }
