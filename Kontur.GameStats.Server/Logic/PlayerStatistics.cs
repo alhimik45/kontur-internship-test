@@ -2,19 +2,22 @@
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
+using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
+        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
         private readonly Dictionary<string, PlayerStatsInfo> _stats = new Dictionary<string, PlayerStatsInfo>();
         private readonly Dictionary<string, InternalPlayerStats> _internalStats = new Dictionary<string, InternalPlayerStats>();
         private readonly List<BestPlayersItem> _bestPlayers = new List<BestPlayersItem>();
 
-        public PlayerStatistics(int maxReportSize)
+        public PlayerStatistics(LiteDatabase db, int maxReportSize)
         {
+            _db = db;
             _maxReportSize = maxReportSize;
         }
 

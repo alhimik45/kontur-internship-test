@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
+using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class ServerStatistics
     {
+        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
         private readonly Dictionary<string, AdvertiseInfo> _servers = new Dictionary<string, AdvertiseInfo>();
@@ -16,9 +18,14 @@ namespace Kontur.GameStats.Server.Logic
         private readonly Dictionary<string, InternalServerStats> _internalStats = new Dictionary<string, InternalServerStats>();
         private readonly List<RecentMatchesItem> _recentMatches = new List<RecentMatchesItem>();
         private readonly List<PopularServersItem> _popularServers = new List<PopularServersItem>();
+        private LiteCollection<KeyValuePair<string, AdvertiseInfo>> _serversColl;
 
-        public ServerStatistics(int maxReportSize)
+
+        public ServerStatistics(LiteDatabase db, int maxReportSize)
         {
+            _db = db;
+            _serversColl = _db.GetCollection<KeyValuePair<string, AdvertiseInfo>>("Servers");
+            _servers = _serversColl.FindAll().ToDictionary(kv => kv.Key, kv => kv.Value);
             _maxReportSize = maxReportSize;
         }
 

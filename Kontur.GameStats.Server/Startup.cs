@@ -6,7 +6,7 @@ namespace Kontur.GameStats.Server
     {
         public void Configuration(IAppBuilder app)
         {
-            app.UseNancy();
+            app.UseNancy(options => options.Bootstrapper = new NancyBootstrapper());
         }
     }
 }

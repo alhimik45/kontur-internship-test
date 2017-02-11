@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using Kontur.GameStats.Server.Logic;
+using LiteDB;
 using Nancy;
 using Nancy.Bootstrapper;
 using Nancy.Responses;
@@ -10,12 +12,21 @@ namespace Kontur.GameStats.Server
 {
     public class NancyBootstrapper : DefaultNancyBootstrapper
     {
+        private readonly string _dbFile;
         private const int MaxReportSize = 50;
+
+        public NancyBootstrapper(string dbName = "data")
+        {
+            _dbFile = $"{dbName}.db";
+            File.Delete(_dbFile);
+            File.Delete($"{dbName}-journal.db");
+        }
 
         protected override void ConfigureApplicationContainer(TinyIoCContainer container)
         {
-            container.Register((c,p) => new ServerStatistics(MaxReportSize));
-            container.Register((c,p) => new PlayerStatistics(MaxReportSize));
+            container.Register(new LiteDatabase(_dbFile));
+            container.Register((c,p) => new ServerStatistics(container.Resolve<LiteDatabase>(), MaxReportSize));
+            container.Register((c,p) => new PlayerStatistics(container.Resolve<LiteDatabase>(), MaxReportSize));
             container.Register<StatisticsManager>().AsSingleton();
         }
 
