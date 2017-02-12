@@ -17,9 +17,9 @@ namespace Kontur.GameStats.Server
 
         public NancyBootstrapper(string dbName = "data")
         {
-            _dbFile = $"{dbName}.db";
-            File.Delete(_dbFile);
-            File.Delete($"{dbName}-journal.db");
+            _dbFile = $"{dbName}.db";//TODO
+            //File.Delete(_dbFile);
+            //File.Delete($"{dbName}-journal.db");
         }
 
         protected override void ConfigureApplicationContainer(TinyIoCContainer container)

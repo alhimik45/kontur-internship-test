@@ -7,12 +7,14 @@ using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
+    using ServersEntry = KeyValuePair<string, AdvertiseInfo>;
+
     public class ServerStatistics
     {
         private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
-        private readonly Dictionary<string, AdvertiseInfo> _servers = new Dictionary<string, AdvertiseInfo>();
+        private readonly Dictionary<string, AdvertiseInfo> _servers;
         private readonly Dictionary<string, Dictionary<string, MatchInfo>> _matches = new Dictionary<string, Dictionary<string, MatchInfo>>();
         private readonly Dictionary<string, ServerStatsInfo> _stats = new Dictionary<string, ServerStatsInfo>();
         private readonly Dictionary<string, InternalServerStats> _internalStats = new Dictionary<string, InternalServerStats>();
@@ -24,14 +26,20 @@ namespace Kontur.GameStats.Server.Logic
         public ServerStatistics(LiteDatabase db, int maxReportSize)
         {
             _db = db;
-            _serversColl = _db.GetCollection<KeyValuePair<string, AdvertiseInfo>>("Servers");
-            _servers = _serversColl.FindAll().ToDictionary(kv => kv.Key, kv => kv.Value);
             _maxReportSize = maxReportSize;
+
+            var mapper = BsonMapper.Global;
+            mapper.Entity<ServersEntry>().Id(kv => kv.Key, false).Field(kv => kv.Key, "Key");
+
+            var _serversColl = _db.GetCollection("Servers");
+            var o = mapper.ToObject<ServersEntry>(_serversColl.FindAll().First());
+           var  _servers = _serversColl.FindAll();
         }
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
             _servers[endpoint] = info;
+            _serversColl.Upsert(endpoint, new ServersEntry(endpoint, info));
         }
 
         public bool HasAdvertise(string endpoint)
