@@ -7,39 +7,53 @@ using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
-    using ServersEntry = KeyValuePair<string, AdvertiseInfo>;
-
     public class ServerStatistics
     {
         private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
         private readonly Dictionary<string, AdvertiseInfo> _servers;
-        private readonly Dictionary<string, Dictionary<string, MatchInfo>> _matches = new Dictionary<string, Dictionary<string, MatchInfo>>();
-        private readonly Dictionary<string, ServerStatsInfo> _stats = new Dictionary<string, ServerStatsInfo>();
-        private readonly Dictionary<string, InternalServerStats> _internalStats = new Dictionary<string, InternalServerStats>();
-        private readonly List<RecentMatchesItem> _recentMatches = new List<RecentMatchesItem>();
-        private readonly List<PopularServersItem> _popularServers = new List<PopularServersItem>();
-        private LiteCollection<KeyValuePair<string, AdvertiseInfo>> _serversColl;
+        private readonly Dictionary<Tuple<string, string>, MatchInfo> _matches;
+        private readonly Dictionary<string, ServerStatsInfo> _stats;
+        private readonly Dictionary<string, InternalServerStats> _internalStats;
+        private readonly List<RecentMatchesItem> _recentMatches;
+        private readonly List<PopularServersItem> _popularServers;
 
+        private readonly LiteCollection<DbEntry<string, AdvertiseInfo>> _serversColl;
+        private readonly LiteCollection<DbEntry<string, ServerStatsInfo>> _statsColl;
+        private readonly LiteCollection<DbEntry<string, InternalServerStats>> _internalStatsColl;
+        private readonly LiteCollection<DbEntry<int, RecentMatchesItem>> _recentMatchesColl;
+        private readonly LiteCollection<DbEntry<int, PopularServersItem>> _popularServersColl;
+        private readonly LiteCollection<DbEntry<List<string>, MatchInfo>> _matchesColl;
 
         public ServerStatistics(LiteDatabase db, int maxReportSize)
         {
             _db = db;
             _maxReportSize = maxReportSize;
 
-            var mapper = BsonMapper.Global;
-            mapper.Entity<ServersEntry>().Id(kv => kv.Key, false).Field(kv => kv.Key, "Key");
+            _serversColl = _db.GetCollection<DbEntry<string, AdvertiseInfo>>("Servers");
+            _servers = _serversColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
 
-            var _serversColl = _db.GetCollection("Servers");
-            var o = mapper.ToObject<ServersEntry>(_serversColl.FindAll().First());
-           var  _servers = _serversColl.FindAll();
+            _statsColl = _db.GetCollection<DbEntry<string, ServerStatsInfo>>("ServerStats");
+            _stats = _statsColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
+
+            _internalStatsColl = _db.GetCollection<DbEntry<string, InternalServerStats>>("InternalServerStats");
+            _internalStats = _internalStatsColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
+
+            _recentMatchesColl = _db.GetCollection<DbEntry<int, RecentMatchesItem>>("RecentMatches");
+            _recentMatches = _recentMatchesColl.FindAll().OrderBy(e => e.Id).Select(e => e.Value).ToList();
+
+            _popularServersColl = _db.GetCollection<DbEntry<int, PopularServersItem>>("PopularServers");
+            _popularServers = _popularServersColl.FindAll().OrderBy(e => e.Id).Select(e => e.Value).ToList();
+
+            _matchesColl = _db.GetCollection<DbEntry<List<string>, MatchInfo>>("Matches");
+            _matches = _matchesColl.FindAll().ToDictionary(e => Tuple.Create(e.Id[0], e.Id[1]), e => e.Value);
         }
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
+            _serversColl.Upsert(endpoint, new DbEntry<string, AdvertiseInfo>(endpoint, info));
             _servers[endpoint] = info;
-            _serversColl.Upsert(endpoint, new ServersEntry(endpoint, info));
         }
 
         public bool HasAdvertise(string endpoint)
@@ -65,20 +79,19 @@ namespace Kontur.GameStats.Server.Logic
 
         public void PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
-            Dictionary<string, MatchInfo> tmp;
-            if (!_matches.TryGetValue(endpoint, out tmp))
+            using (var transaction = _db.BeginTrans())
             {
-                tmp = _matches[endpoint] = new Dictionary<string, MatchInfo>();
+                var id = new List<string> { endpoint, timestamp };
+                _matchesColl.Upsert(new BsonValue(id), new DbEntry<List<string>, MatchInfo>(id, info));
+                CalcStats(endpoint, timestamp, info);
+                transaction.Commit();
             }
-            CalcStats(endpoint, timestamp, info);
-            tmp[timestamp] = info;
+            _matches[Tuple.Create(endpoint, timestamp)] = info;
         }
 
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
-            Dictionary<string, MatchInfo> tmp;
-            _matches.TryGetValue(endpoint, out tmp);
-            return tmp?.Get(timestamp);
+            return _matches.Get(Tuple.Create(endpoint, timestamp));
         }
 
         public ServerStatsInfo GetStats(string endpoint)
@@ -119,6 +132,9 @@ namespace Kontur.GameStats.Server.Logic
             UpdateRecentMatchesReport(endpoint, timestamp, info);
             UpdatePopularServersReport(endpoint, newStats);
 
+            _statsColl.Upsert(endpoint, new DbEntry<string, ServerStatsInfo>(endpoint, newStats));
+            _internalStatsColl.Upsert(endpoint, new DbEntry<string, InternalServerStats>(endpoint, internalStats));
+
             _stats[endpoint] = newStats;
         }
 
@@ -133,6 +149,10 @@ namespace Kontur.GameStats.Server.Logic
                     Timestamp = timestamp,
                     Results = info
                 });
+            for (var i = 0; i < _recentMatches.Count; i++)
+            {
+                _recentMatchesColl.Upsert(i, new DbEntry<int, RecentMatchesItem>(i, _recentMatches[i]));
+            }
         }
 
         private void UpdatePopularServersReport(string endpoint, ServerStatsInfo info)
@@ -146,6 +166,10 @@ namespace Kontur.GameStats.Server.Logic
                     Name = info.Name,
                     AverageMatchesPerDay = info.AverageMatchesPerDay
                 });
+            for (var i = 0; i < _popularServers.Count; i++)
+            {
+                _popularServersColl.Upsert(i, new DbEntry<int, PopularServersItem>(i, _popularServers[i]));
+            }
         }
     }
 }
