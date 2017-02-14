@@ -7,7 +7,6 @@ namespace Kontur.GameStats.Server.Data
 {
     public class ServerStatsInfo
     {
-        public string Name { get; set; }
         public int TotalMatchesPlayed { get; set; }
         public int MaximumMatchesPerDay { get; set; }
         public double AverageMatchesPerDay { get; set; }
@@ -21,7 +20,6 @@ namespace Kontur.GameStats.Server.Data
             var totalMatches = TotalMatchesPlayed + 1;
             return new ServerStatsInfo
             {
-                Name = name,
                 TotalMatchesPlayed = totalMatches,
                 Top5Maps = GetTop5Maps(info, internalStats),
                 Top5GameModes = GetTop5Modes(info, internalStats),

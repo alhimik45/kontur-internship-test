@@ -2,23 +2,26 @@
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
+using Kontur.GameStats.Server.Util;
 using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
-        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
-        private readonly Dictionary<string, PlayerStatsInfo> _stats = new Dictionary<string, PlayerStatsInfo>();
-        private readonly Dictionary<string, InternalPlayerStats> _internalStats = new Dictionary<string, InternalPlayerStats>();
-        private readonly List<BestPlayersItem> _bestPlayers = new List<BestPlayersItem>();
+        private readonly PersistentDictionary<string, PlayerStatsInfo> _stats;
+        private readonly PersistentDictionary<string, InternalPlayerStats> _internalStats;
+        private readonly PersistentList<BestPlayersItem> _bestPlayers;
 
         public PlayerStatistics(LiteDatabase db, int maxReportSize)
         {
-            _db = db;
             _maxReportSize = maxReportSize;
+
+            _stats = new PersistentDictionary<string, PlayerStatsInfo>(db, "PlayerStats");
+            _internalStats = new PersistentDictionary<string, InternalPlayerStats>(db, "InternalPlayerStats");
+            _bestPlayers = new PersistentList<BestPlayersItem>(db, "BestPlayers");
         }
 
         public void AddMatchInfo(string endpoint, string timestamp, MatchInfo info)

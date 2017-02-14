@@ -17,15 +17,6 @@ namespace Kontur.GameStats.Server.Data
         public string LastMatchPlayed { get; set; }
         public double KillToDeathRatio { get; set; }
 
-        public string GetLastTimePlayed(string timestamp)
-        {
-            if (LastMatchPlayed != null)
-            {
-                return timestamp.ToUtc() > LastMatchPlayed.ToUtc() ? timestamp : LastMatchPlayed;
-            }
-            return timestamp;
-        }
-
         public PlayerStatsInfo CalcNew(string endpoint, string timestamp, int place, InternalPlayerStats internalStats, MatchInfo matchInfo, PlayerMatchInfo info)
         {
             var time = timestamp.ToUtc();
@@ -45,6 +36,15 @@ namespace Kontur.GameStats.Server.Data
                 AverageMatchesPerDay = (double)totalMatches / internalStats.MatchesPerDay.Count,
                 KillToDeathRatio = (double)internalStats.TotalKills / internalStats.TotalDeaths
             };
+        }
+
+        private string GetLastTimePlayed(string timestamp)
+        {
+            if (LastMatchPlayed != null)
+            {
+                return timestamp.ToUtc() > LastMatchPlayed.ToUtc() ? timestamp : LastMatchPlayed;
+            }
+            return timestamp;
         }
 
         private static string UpdateFavorite(IDictionary<string, int> frequency, string updatedValue, string oldValue)

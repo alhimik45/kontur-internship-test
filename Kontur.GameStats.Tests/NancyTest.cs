@@ -502,7 +502,6 @@ namespace Kontur.GameStats.Tests
             AveragePopulation = 20 / 7.0,
             MaximumMatchesPerDay = 4,
             MaximumPopulation = 5,
-            Name = "Server",
             TotalMatchesPlayed = 7,
             Top5GameModes = new List<string>
             {
