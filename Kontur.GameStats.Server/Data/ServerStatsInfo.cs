@@ -37,7 +37,7 @@ namespace Kontur.GameStats.Server.Data
             return Top5Maps.ToList().UpdateTop(5,
                 m => internalStats.MapFrequency[m],
                 m => m,
-                info.Map);
+                info.Map).ToList();
         }
 
         private List<string> GetTop5Modes(MatchInfo info, InternalServerStats internalStats)
@@ -45,7 +45,7 @@ namespace Kontur.GameStats.Server.Data
             return Top5GameModes.ToList().UpdateTop(5,
                 m => internalStats.GameModeFrequency[m],
                 m => m,
-                info.GameMode);
+                info.GameMode).ToList();
         }
     }
 }

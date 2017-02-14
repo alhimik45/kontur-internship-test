@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
-using LiteDB;
 
-namespace Kontur.GameStats.Server.Data
+namespace Kontur.GameStats.Server.Util
 {
     public static class Pair
     {
-        public static Pair<T1, T2> Create<T1, T2>(T1 item1, T2 item2)
+        public static Pair<T1, T2> Of<T1, T2>(T1 item1, T2 item2)
         {
             return new Pair<T1, T2>
             {
@@ -24,7 +23,7 @@ namespace Kontur.GameStats.Server.Data
         {
         }
 
-        protected bool Equals(Pair<T1, T2> other)
+        private bool Equals(Pair<T1, T2> other)
         {
             return EqualityComparer<T1>.Default.Equals(Item1, other.Item1) && EqualityComparer<T2>.Default.Equals(Item2, other.Item2);
         }
@@ -33,8 +32,7 @@ namespace Kontur.GameStats.Server.Data
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((Pair<T1, T2>) obj);
+            return obj.GetType() == this.GetType() && Equals((Pair<T1, T2>) obj);
         }
 
         public override int GetHashCode()
