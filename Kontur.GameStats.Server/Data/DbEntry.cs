@@ -2,19 +2,20 @@
 
 namespace Kontur.GameStats.Server.Data
 {
-    public class DbEntry<TId,TValue>
+    public class DbEntry<TKey, TValue>
     {
-        [BsonId]
-        public TId Id { get; set; }
+        public int Id { get; set; }
+        public TKey Key { get; set; }
         public TValue Value { get; set; }
 
         public DbEntry()
         {
         }
 
-        public DbEntry(TId id, TValue value)
+        public DbEntry(TKey key, TValue value)
         {
-            Id = id;
+            Id = key.GetHashCode();
+            Key = key;
             Value = value;
         }
     }

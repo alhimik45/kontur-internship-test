@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
+using Kontur.GameStats.Server.Util;
 using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
@@ -12,47 +13,35 @@ namespace Kontur.GameStats.Server.Logic
         private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
-        private readonly Dictionary<string, AdvertiseInfo> _servers;
-        private readonly Dictionary<Tuple<string, string>, MatchInfo> _matches;
-        private readonly Dictionary<string, ServerStatsInfo> _stats;
-        private readonly Dictionary<string, InternalServerStats> _internalStats;
+        private readonly PersistentDictionary<string, AdvertiseInfo> _servers;
+        private readonly PersistentDictionary<Pair<string, string>, MatchInfo> _matches;
+        private readonly PersistentDictionary<string, ServerStatsInfo> _stats;
+        private readonly PersistentDictionary<string, InternalServerStats> _internalStats;
         private readonly List<RecentMatchesItem> _recentMatches;
         private readonly List<PopularServersItem> _popularServers;
 
-        private readonly LiteCollection<DbEntry<string, AdvertiseInfo>> _serversColl;
-        private readonly LiteCollection<DbEntry<string, ServerStatsInfo>> _statsColl;
-        private readonly LiteCollection<DbEntry<string, InternalServerStats>> _internalStatsColl;
         private readonly LiteCollection<DbEntry<int, RecentMatchesItem>> _recentMatchesColl;
         private readonly LiteCollection<DbEntry<int, PopularServersItem>> _popularServersColl;
-        private readonly LiteCollection<DbEntry<List<string>, MatchInfo>> _matchesColl;
 
         public ServerStatistics(LiteDatabase db, int maxReportSize)
         {
             _db = db;
             _maxReportSize = maxReportSize;
 
-            _serversColl = _db.GetCollection<DbEntry<string, AdvertiseInfo>>("Servers");
-            _servers = _serversColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
-
-            _statsColl = _db.GetCollection<DbEntry<string, ServerStatsInfo>>("ServerStats");
-            _stats = _statsColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
-
-            _internalStatsColl = _db.GetCollection<DbEntry<string, InternalServerStats>>("InternalServerStats");
-            _internalStats = _internalStatsColl.FindAll().ToDictionary(e => e.Id, e => e.Value);
+            _servers =  new PersistentDictionary<string, AdvertiseInfo>(db, "Servers");
+            _matches =  new PersistentDictionary<Pair<string, string>, MatchInfo>(db, "Matches");
+            _internalStats =  new PersistentDictionary<string, InternalServerStats>(db, "InternalServerStats");
+            _stats =  new PersistentDictionary<string, ServerStatsInfo>(db, "ServerStatsI");
 
             _recentMatchesColl = _db.GetCollection<DbEntry<int, RecentMatchesItem>>("RecentMatches");
             _recentMatches = _recentMatchesColl.FindAll().OrderBy(e => e.Id).Select(e => e.Value).ToList();
 
             _popularServersColl = _db.GetCollection<DbEntry<int, PopularServersItem>>("PopularServers");
             _popularServers = _popularServersColl.FindAll().OrderBy(e => e.Id).Select(e => e.Value).ToList();
-
-            _matchesColl = _db.GetCollection<DbEntry<List<string>, MatchInfo>>("Matches");
-            _matches = _matchesColl.FindAll().ToDictionary(e => Tuple.Create(e.Id[0], e.Id[1]), e => e.Value);
         }
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
-            _serversColl.Upsert(endpoint, new DbEntry<string, AdvertiseInfo>(endpoint, info));
             _servers[endpoint] = info;
         }
 
@@ -81,17 +70,15 @@ namespace Kontur.GameStats.Server.Logic
         {
             using (var transaction = _db.BeginTrans())
             {
-                var id = new List<string> { endpoint, timestamp };
-                _matchesColl.Upsert(new BsonValue(id), new DbEntry<List<string>, MatchInfo>(id, info));
                 CalcStats(endpoint, timestamp, info);
                 transaction.Commit();
             }
-            _matches[Tuple.Create(endpoint, timestamp)] = info;
+            _matches[Pair.Create(endpoint, timestamp)] = info;
         }
 
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
-            return _matches.Get(Tuple.Create(endpoint, timestamp));
+            return _matches.Get(Pair.Create(endpoint, timestamp));
         }
 
         public ServerStatsInfo GetStats(string endpoint)
@@ -131,9 +118,6 @@ namespace Kontur.GameStats.Server.Logic
 
             UpdateRecentMatchesReport(endpoint, timestamp, info);
             UpdatePopularServersReport(endpoint, newStats);
-
-            _statsColl.Upsert(endpoint, new DbEntry<string, ServerStatsInfo>(endpoint, newStats));
-            _internalStatsColl.Upsert(endpoint, new DbEntry<string, InternalServerStats>(endpoint, internalStats));
 
             _stats[endpoint] = newStats;
         }

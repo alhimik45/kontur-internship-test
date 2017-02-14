@@ -14,6 +14,13 @@ namespace Kontur.GameStats.Tests
     {
         private const string DbName = "PersistenceTest";
 
+        [OneTimeSetUp]
+        public void DeleteDb()
+        {
+            File.Delete($"{DbName}.db");
+            File.Delete($"{DbName}-journal.db");
+        }
+
         [SetUp]
         public void CreateModuleAndConnect()
         {
@@ -22,11 +29,10 @@ namespace Kontur.GameStats.Tests
         }
 
         [TearDown]
-        public void CleanDb()
+        public void TearDown()
         {
             DisposeModule();
-            File.Delete($"{DbName}.db");
-            File.Delete($"{DbName}-journal.db");
+            DeleteDb();
         }
 
         private void DisposeModule()
