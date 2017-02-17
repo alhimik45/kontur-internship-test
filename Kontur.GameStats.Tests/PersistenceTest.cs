@@ -17,7 +17,8 @@ namespace Kontur.GameStats.Tests
         [OneTimeSetUp]
         public void DeleteDb()
         {
-            File.Delete($"{DbName}.db");
+            File.Delete($"{DbName}-players.db");
+            File.Delete($"{DbName}-servers.db");
             File.Delete($"{DbName}-journal.db");
         }
 

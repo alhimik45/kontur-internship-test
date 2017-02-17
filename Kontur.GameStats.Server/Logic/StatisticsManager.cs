@@ -1,19 +1,16 @@
 ﻿using System.Collections.Generic;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
-using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class StatisticsManager
     {
-        private readonly LiteDatabase _db;
         private readonly ServerStatistics _serverStatistics;
         private readonly PlayerStatistics _playerStatistics;
 
-        public StatisticsManager(LiteDatabase db, ServerStatistics serverStatistics, PlayerStatistics playerStatistics)
+        public StatisticsManager(ServerStatistics serverStatistics, PlayerStatistics playerStatistics)
         {
-            _db = db;
             _serverStatistics = serverStatistics;
             _playerStatistics = playerStatistics;
         }
@@ -33,12 +30,9 @@ namespace Kontur.GameStats.Server.Logic
             {
                 return false;
             }
-            using (var transaction = _db.BeginTrans())
-            {
-                _serverStatistics.PutMatch(endpoint, timestamp, info);
-                _playerStatistics.AddMatchInfo(endpoint, timestamp, info);
-                transaction.Commit();
-            }
+
+            _serverStatistics.PutMatch(endpoint, timestamp, info);
+            _playerStatistics.AddMatchInfo(endpoint, timestamp, info);
             return true;
         }
 

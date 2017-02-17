@@ -7,6 +7,12 @@ namespace Kontur.GameStats.Server
 {
     public class EntryPoint
     {
+        class S
+        {
+            public int Id { get; set; }
+            public string V { get; set; }
+        }
+
         public static void Main(string[] args)
         {
             var commandLineParser = new FluentCommandLineParser<Options>();
@@ -26,6 +32,34 @@ namespace Kontur.GameStats.Server
                 return;
 
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;
+
+            //var db = new LiteDatabase("test.db");
+            //var c = new PersistentDictionary<int, int>(db, "kek");
+            //var tt = new List<Thread>();
+            //for (int i = 0; i < 50; i++)
+            //{
+            //    var ii = i;
+            //    var t = new Thread(() =>
+            //    {
+            //        using (var trans = db.BeginTrans())
+            //        {
+            //            var r = new Random();
+            //            for (int j = 0; j < 5000; j++)
+            //            {
+            //                c[r.Next(500)] = r.Next();
+            //                //coll.Upsert(new S() { Id = r.Next(100), V = "str" });
+            //                //Thread.Sleep(r.Next(1500));
+            //            }
+            //            trans.Commit();
+            //        }
+            //    });
+            //    t.Start();
+            //    tt.Add(t);
+            //}
+            //foreach (var thread in tt)
+            //{
+            //    thread.Join();
+            //}
 
             RunServer(commandLineParser.Object);
         }

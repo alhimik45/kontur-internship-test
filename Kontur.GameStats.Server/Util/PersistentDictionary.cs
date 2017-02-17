@@ -1,20 +1,22 @@
 ﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using Kontur.GameStats.Server.Data;
+using Fclp.Internals.Extensions;
 using LiteDB;
 
 namespace Kontur.GameStats.Server.Util
 {
     public class PersistentDictionary<TKey, TValue> : IDictionary<TKey, TValue>
     {
-        private readonly Dictionary<TKey, TValue> _storage;
+        private readonly ConcurrentDictionary<TKey, TValue> _storage;
         private readonly LiteCollection<DbEntry<TKey, TValue>> _dbColl;
 
         public PersistentDictionary(LiteDatabase db, string collectionName)
         {
             _dbColl = db.GetCollection<DbEntry<TKey, TValue>>(collectionName);
-            _storage = _dbColl.FindAll().ToDictionary(e => e.Key, e => e.Value);
+            _storage = new ConcurrentDictionary<TKey, TValue>();
+            _dbColl.FindAll().ForEach(e => _storage[e.Key] = e.Value);
         }
 
         public void Clear()
@@ -32,13 +34,13 @@ namespace Kontur.GameStats.Server.Util
 
         public void Add(TKey key, TValue value)
         {
-            _storage.Add(key, value);
+            ((IDictionary<TKey,TValue>)_storage).Add(key, value);
             _dbColl.Upsert(key.GetHashCode(), DbEntry.Of(key, value));
         }
 
         public bool Remove(TKey key)
         {
-            if (!_storage.Remove(key)) return false;
+            if (!((IDictionary<TKey, TValue>)_storage).Remove(key)) return false;
             _dbColl.Delete(key.GetHashCode());
             return true;
         }

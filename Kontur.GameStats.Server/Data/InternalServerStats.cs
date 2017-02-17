@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Data
@@ -10,8 +10,8 @@ namespace Kontur.GameStats.Server.Data
         public int MatchesInLastDay { get; set; }
         public int TotalPopulation { get; set; }
         public int DaysWithMatchesCount { get; set; } = 1;
-        public Dictionary<string, int> MapFrequency { get; } = new Dictionary<string, int>();
-        public Dictionary<string, int> GameModeFrequency { get; } = new Dictionary<string, int>();
+        public ConcurrentDictionary<string, int> MapFrequency { get; } = new ConcurrentDictionary<string, int>();
+        public ConcurrentDictionary<string, int> GameModeFrequency { get; } = new ConcurrentDictionary<string, int>();
 
         public void Update(DateTime time, MatchInfo info)
         {

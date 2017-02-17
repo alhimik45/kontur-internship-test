@@ -10,6 +10,7 @@ namespace Kontur.GameStats.Server.Logic
 {
     public class ServerStatistics
     {
+        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
         private readonly PersistentDictionary<string, AdvertiseInfo> _servers;
@@ -21,6 +22,7 @@ namespace Kontur.GameStats.Server.Logic
 
         public ServerStatistics(LiteDatabase db, int maxReportSize)
         {
+            _db = db;
             _maxReportSize = maxReportSize;
 
             _servers = new PersistentDictionary<string, AdvertiseInfo>(db, "Servers");
@@ -33,7 +35,10 @@ namespace Kontur.GameStats.Server.Logic
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
-            _servers[endpoint] = info;
+            lock (this)
+            {
+                _servers[endpoint] = info;
+            }
         }
 
         public bool HasAdvertise(string endpoint)
@@ -59,7 +64,10 @@ namespace Kontur.GameStats.Server.Logic
 
         public void PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
-            _matches[Pair.Of(endpoint, timestamp)] = info;
+            lock (this)
+            {
+                _matches[Pair.Of(endpoint, timestamp)] = info;
+            }
             CalcStats(endpoint, timestamp, info);
         }
 
@@ -100,15 +108,22 @@ namespace Kontur.GameStats.Server.Logic
             }
 
             internalStats.Update(time, info);
-
             var serverName = _servers[endpoint].Name;
-
             var newStats = oldStats.CalcNew(serverName, info, internalStats);
 
-            UpdateRecentMatchesReport(endpoint, timestamp, info);
-            UpdatePopularServersReport(serverName, endpoint, newStats);
+            lock (this)
+            {
+                using (var transaction = _db.BeginTrans())
+                {
+                    _internalStats[endpoint] = internalStats;
 
-            _stats[endpoint] = newStats;
+                    UpdateRecentMatchesReport(endpoint, timestamp, info);
+                    UpdatePopularServersReport(serverName, endpoint, newStats);
+
+                    _stats[endpoint] = newStats;
+                    transaction.Commit();
+                }
+            }
         }
 
         private void UpdateRecentMatchesReport(string endpoint, string timestamp, MatchInfo info)

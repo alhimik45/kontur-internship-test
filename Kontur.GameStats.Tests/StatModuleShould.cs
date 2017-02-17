@@ -17,7 +17,8 @@ namespace Kontur.GameStats.Tests
         public void SetUp()
         {
             const string dbName = "StatModuleTest";
-            File.Delete($"{dbName}.db");
+            File.Delete($"{dbName}-players.db");
+            File.Delete($"{dbName}-servers.db");
             File.Delete($"{dbName}-journal.db");
             Bootstrapper = new NancyBootstrapper(dbName);
             Browser = new Browser(Bootstrapper);

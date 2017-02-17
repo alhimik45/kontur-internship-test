@@ -9,6 +9,7 @@ namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
+        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
         private readonly PersistentDictionary<string, PlayerStatsInfo> _stats;
@@ -17,6 +18,7 @@ namespace Kontur.GameStats.Server.Logic
 
         public PlayerStatistics(LiteDatabase db, int maxReportSize)
         {
+            _db = db;
             _maxReportSize = maxReportSize;
 
             _stats = new PersistentDictionary<string, PlayerStatsInfo>(db, "PlayerStats");
@@ -64,12 +66,19 @@ namespace Kontur.GameStats.Server.Logic
 
             var newStats = oldStats.CalcNew(endpoint, timestamp, place, internalStats, matchInfo, info);
 
-            if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
+            lock (this)
             {
-                UpdateBestPlayersReport(playerName, newStats);
+                using (var transaction = _db.BeginTrans())
+                {
+                    if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
+                    {
+                        UpdateBestPlayersReport(playerName, newStats);
+                    }
+                    _internalStats[playerName] = internalStats;
+                    _stats[playerName] = newStats;
+                    transaction.Commit();
+                }
             }
-
-            _stats[playerName] = newStats;
         }
 
         private void UpdateBestPlayersReport(string name, PlayerStatsInfo info)

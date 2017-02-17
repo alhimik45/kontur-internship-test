@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kontur.GameStats.Server;
 using Kontur.GameStats.Server.Data;
-using Nancy.Bootstrapper;
 using Nancy.Testing;
 
 namespace Kontur.GameStats.Tests
@@ -10,7 +10,7 @@ namespace Kontur.GameStats.Tests
     public class NancyTest
     {
         protected Browser Browser;
-        protected INancyBootstrapper Bootstrapper;
+        protected NancyBootstrapper Bootstrapper;
 
         protected const string ServersInfoPath = "/servers/info";
         protected readonly Func<int?, string> RecentMatchesPath = count => "/reports/recent-matches" + (count.HasValue ? $"/{count.Value}" : "");
