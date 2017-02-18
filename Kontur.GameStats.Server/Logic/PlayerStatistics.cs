@@ -1,29 +1,40 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Extensions;
 using Kontur.GameStats.Server.Util;
-using LiteDB;
 
 namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
-        private readonly LiteDatabase _db;
         private readonly int _maxReportSize;
 
-        private readonly PersistentDictionary<string, PlayerStatsInfo> _stats;
-        private readonly PersistentDictionary<string, InternalPlayerStats> _internalStats;
-        private readonly PersistentList<BestPlayersItem> _bestPlayers;
+        private readonly PersistentDictionary<PlayerStatsInfo> _stats;
+        private readonly PersistentDictionary<InternalPlayerStats> _internalStats;
+        private readonly List<BestPlayersItem> _bestPlayers;
 
-        public PlayerStatistics(LiteDatabase db, int maxReportSize)
+        private readonly ConcurrentDictionary<string, object> _locks = new ConcurrentDictionary<string, object>();
+
+        public PlayerStatistics(int maxReportSize)
         {
-            _db = db;
             _maxReportSize = maxReportSize;
 
-            _stats = new PersistentDictionary<string, PlayerStatsInfo>(db, "PlayerStats");
-            _internalStats = new PersistentDictionary<string, InternalPlayerStats>(db, "InternalPlayerStats");
-            _bestPlayers = new PersistentList<BestPlayersItem>(db, "BestPlayers");
+            _stats = new PersistentDictionary<PlayerStatsInfo>("Players", "PlayerStats", false);
+            _internalStats = new PersistentDictionary<InternalPlayerStats>("Players", "InternalPlayerStats", false);
+            _bestPlayers = _stats
+                .Where(kv => kv.Value.TotalMatchesPlayed >= 10 && _internalStats[kv.Key].TotalDeaths != 0)
+                .OrderByDescending(kv => kv.Value.KillToDeathRatio)
+                .Select(kv => new BestPlayersItem
+                {
+                    Name = kv.Key,
+                    KillToDeathRatio = kv.Value.KillToDeathRatio
+                })
+                .Take(maxReportSize)
+                .ToList();
+            Console.WriteLine("rdy");
         }
 
         public void AddMatchInfo(string endpoint, string timestamp, MatchInfo info)
@@ -36,7 +47,7 @@ namespace Kontur.GameStats.Server.Logic
 
         public PlayerStatsInfo GetStats(string name)
         {
-            return _stats.Get(name.ToLower());
+            return _stats[name.ToLower()];
         }
 
         public List<BestPlayersItem> GetBestPlayers(int count)
@@ -47,50 +58,50 @@ namespace Kontur.GameStats.Server.Logic
         private void CalcPlayerStats(string endpoint, string timestamp, int index, MatchInfo matchInfo)
         {
             var info = matchInfo.Scoreboard[index];
-            var place = index + 1;
             var playerName = info.Name.ToLower();
-            PlayerStatsInfo oldStats;
-            InternalPlayerStats internalStats;
-            if (!_stats.TryGetValue(playerName, out oldStats))
-            {
-                internalStats = new InternalPlayerStats();
-                _internalStats[playerName] = internalStats;
-                oldStats = new PlayerStatsInfo();
-            }
-            else
-            {
-                internalStats = _internalStats[playerName];
-            }
 
-            internalStats.Update(timestamp.ToUtc(), place, matchInfo, info);
-
-            var newStats = oldStats.CalcNew(endpoint, timestamp, place, internalStats, matchInfo, info);
-
-            lock (this)
+            lock (_locks.GetOrAdd(playerName, _ => new object()))
             {
-                using (var transaction = _db.BeginTrans())
+                var place = index + 1;
+                PlayerStatsInfo oldStats;
+                InternalPlayerStats internalStats;
+                if (!_stats.TryGetValue(playerName, out oldStats))
                 {
-                    if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
-                    {
-                        UpdateBestPlayersReport(playerName, newStats);
-                    }
+                    internalStats = new InternalPlayerStats();
                     _internalStats[playerName] = internalStats;
-                    _stats[playerName] = newStats;
-                    transaction.Commit();
+                    oldStats = new PlayerStatsInfo();
                 }
+                else
+                {
+                    internalStats = _internalStats[playerName];
+                }
+
+                internalStats.Update(timestamp.ToUtc(), place, matchInfo, info);
+
+                var newStats = oldStats.CalcNew(endpoint, timestamp, place, internalStats, matchInfo, info);
+
+                if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
+                {
+                    UpdateBestPlayersReport(playerName, newStats);
+                }
+                _internalStats[playerName] = internalStats;
+                _stats[playerName] = newStats;
             }
         }
 
         private void UpdateBestPlayersReport(string name, PlayerStatsInfo info)
         {
-            _bestPlayers.UpdateTop(_maxReportSize,
-                bp => bp.KillToDeathRatio,
-                bp => bp.Name,
-                new BestPlayersItem
-                {
-                    Name = name,
-                    KillToDeathRatio = info.KillToDeathRatio
-                });
+            lock (_bestPlayers)
+            {
+                _bestPlayers.UpdateTop(_maxReportSize,
+                    bp => bp.KillToDeathRatio,
+                    bp => bp.Name,
+                    new BestPlayersItem
+                    {
+                        Name = name,
+                        KillToDeathRatio = info.KillToDeathRatio
+                    });
+            }
         }
     }
 }

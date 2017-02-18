@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class MatchInfo
     {
         public string Map { get; set; }

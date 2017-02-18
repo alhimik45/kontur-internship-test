@@ -4,6 +4,7 @@ using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class PlayerStatsInfo
     {
         public int TotalMatchesPlayed { get; set; }

@@ -5,6 +5,7 @@ using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class ServerStatsInfo
     {
         public int TotalMatchesPlayed { get; set; }
@@ -15,7 +16,7 @@ namespace Kontur.GameStats.Server.Data
         public List<string> Top5GameModes { get; set; } = new List<string>();
         public List<string> Top5Maps { get; set; } = new List<string>();
 
-        public ServerStatsInfo CalcNew(string name, MatchInfo info, InternalServerStats internalStats)
+        public ServerStatsInfo CalcNew(MatchInfo info, InternalServerStats internalStats)
         {
             var totalMatches = TotalMatchesPlayed + 1;
             return new ServerStatsInfo

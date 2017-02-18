@@ -1,5 +1,8 @@
+using System;
+
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class PlayerMatchInfo
     {
         public string Name { get; set; }

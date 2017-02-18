@@ -1,76 +1,131 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using Fclp.Internals.Extensions;
-using LiteDB;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using Kontur.GameStats.Server.Extensions;
+using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
 {
-    public class PersistentDictionary<TKey, TValue> : IDictionary<TKey, TValue>
+    public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>>
     {
-        private readonly ConcurrentDictionary<TKey, TValue> _storage;
-        private readonly LiteCollection<DbEntry<TKey, TValue>> _dbColl;
+        private readonly string _innerValues = Path.DirectorySeparatorChar + "Inner";
+        private readonly string _collectionName;
+        private readonly string _basePath;
+        private readonly ConcurrentDictionary<string, TValue> _storage;
 
-        public PersistentDictionary(LiteDatabase db, string collectionName)
+        public PersistentDictionary(string basePath, string collectionName, bool doubleKey)
         {
-            _dbColl = db.GetCollection<DbEntry<TKey, TValue>>(collectionName);
-            _storage = new ConcurrentDictionary<TKey, TValue>();
-            _dbColl.FindAll().ForEach(e => _storage[e.Key] = e.Value);
-        }
-
-        public void Clear()
-        {
-            _storage.Clear();
-            _dbColl.Delete(_ => true);
-        }
-
-        public bool Remove(KeyValuePair<TKey, TValue> item)
-        {
-            if (!((ICollection<KeyValuePair<TKey, TValue>>)_storage).Remove(item)) return false;
-            _dbColl.Delete(item.Key.GetHashCode());
-            return true;
-        }
-
-        public void Add(TKey key, TValue value)
-        {
-            ((IDictionary<TKey,TValue>)_storage).Add(key, value);
-            _dbColl.Upsert(key.GetHashCode(), DbEntry.Of(key, value));
-        }
-
-        public bool Remove(TKey key)
-        {
-            if (!((IDictionary<TKey, TValue>)_storage).Remove(key)) return false;
-            _dbColl.Delete(key.GetHashCode());
-            return true;
-        }
-
-        public TValue this[TKey key]
-        {
-            get { return _storage[key]; }
-            set
+            _collectionName = Path.DirectorySeparatorChar + collectionName;
+            _basePath = basePath + Path.DirectorySeparatorChar;
+            _storage = new ConcurrentDictionary<string, TValue>();
+            var formatter = new BinaryFormatter();
+            Directory.CreateDirectory(basePath);
+            foreach (var outDir in Directory.GetDirectories(basePath))
             {
-                _storage[key] = value;
-                _dbColl.Upsert(key.GetHashCode(), DbEntry.Of(key, value));
+                foreach (var dir in Directory.GetDirectories(outDir))
+                {
+                    var key = Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
+                    if (doubleKey)
+                    {
+                        ReadInnerValues(dir + _innerValues, key, formatter);
+                    }
+                    else
+                    {
+                        ReadValue(dir, key, formatter);
+                    }
+                }
             }
         }
 
-        public void Add(KeyValuePair<TKey, TValue> item)
+        private void ReadValue(string dir, string key, IFormatter formatter)
         {
-            Add(item.Key, item.Value);
+            var filePath = dir + _collectionName;
+            if (!File.Exists(filePath)) return;
+            try
+            {
+                using (var fs = new FileStream(filePath, FileMode.Open))
+                {
+                    _storage[key] = (TValue)formatter.Deserialize(fs);
+                }
+            }
+            catch (SerializationException)
+            {
+                //if there bad data remove it and ignore
+                File.Delete(filePath);
+            }
         }
 
-        public int Count => _storage.Count;
-        public bool IsReadOnly => ((ICollection<KeyValuePair<TKey, TValue>>)_storage).IsReadOnly;
-        public ICollection<TKey> Keys => _storage.Keys;
-        public ICollection<TValue> Values => _storage.Values;
+        private void ReadInnerValues(string dir, string key, IFormatter formatter)
+        {
+            if (!Directory.Exists(dir)) return;
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                var innerKey = Uri.UnescapeDataString(file.Split(Path.DirectorySeparatorChar).Last());
+                try
+                {
+                    using (var fs = new FileStream(file, FileMode.Open))
+                    {
+                        _storage[key + Path.DirectorySeparatorChar + innerKey] =
+                            (TValue)formatter.Deserialize(fs);
+                    }
+                }
+                catch (SerializationException)
+                {
+                    //if there bad data remove it and ignore
+                    File.Delete(file);
+                }
+            }
+        }
 
-        public bool TryGetValue(TKey key, out TValue value)
+        private static string GetKeyPath(string key)
+        {
+            return Math.Abs(key.GetHashCode()).ToString().Substring(0, 3) + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
+        }
+
+        public TValue this[string key]
+        {
+            get { return _storage.Get(key); }
+            set
+            {
+                _storage[key] = value;
+                var path = _basePath + GetKeyPath(key) + Path.DirectorySeparatorChar;
+                Directory.CreateDirectory(path);
+                var formatter = new BinaryFormatter();
+                using (var fs = new FileStream(path + _collectionName, FileMode.Create))
+                {
+                    formatter.Serialize(fs, value);
+                }
+            }
+        }
+
+        public TValue this[DoubleKey key]
+        {
+            get { return _storage.Get(key.ToString()); }
+            set
+            {
+                _storage[key.ToString()] = value;
+                var innerPath = _basePath + GetKeyPath(key.Key1) + _innerValues;
+                var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key.Key2);
+                Directory.CreateDirectory(innerPath);
+                var formatter = new BinaryFormatter();
+                using (var fs = new FileStream(innerFile, FileMode.Create))
+                {
+                    formatter.Serialize(fs, value);
+                }
+            }
+        }
+
+        public bool TryGetValue(string key, out TValue value)
         {
             return _storage.TryGetValue(key, out value);
         }
 
-        public bool ContainsKey(TKey key)
+        public bool ContainsKey(string key)
         {
             return _storage.ContainsKey(key);
         }
@@ -80,19 +135,9 @@ namespace Kontur.GameStats.Server.Util
             return GetEnumerator();
         }
 
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+        public IEnumerator<KeyValuePair<string, TValue>> GetEnumerator()
         {
             return _storage.GetEnumerator();
-        }
-
-        public bool Contains(KeyValuePair<TKey, TValue> item)
-        {
-            return _storage.Contains(item);
-        }
-
-        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
-        {
-            ((ICollection<KeyValuePair<TKey, TValue>>)_storage).CopyTo(array, arrayIndex);
         }
     }
 }

@@ -1,5 +1,8 @@
-﻿namespace Kontur.GameStats.Server.Data
+﻿using System;
+
+namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class ServersInfoItem
     {
         public string Endpoint { get; set; }

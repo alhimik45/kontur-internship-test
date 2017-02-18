@@ -16,11 +16,15 @@ namespace Kontur.GameStats.Tests
         [SetUp]
         public void SetUp()
         {
-            const string dbName = "StatModuleTest";
-            File.Delete($"{dbName}-players.db");
-            File.Delete($"{dbName}-servers.db");
-            File.Delete($"{dbName}-journal.db");
-            Bootstrapper = new NancyBootstrapper(dbName);
+            if (Directory.Exists("Servers"))
+            {
+                Directory.Delete("Servers", true);
+            }
+            if (Directory.Exists("Players"))
+            {
+                Directory.Delete("Players", true);
+            }
+            Bootstrapper = new NancyBootstrapper();
             Browser = new Browser(Bootstrapper);
         }
 

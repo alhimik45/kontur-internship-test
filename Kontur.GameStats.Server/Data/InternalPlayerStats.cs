@@ -4,6 +4,7 @@ using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class InternalPlayerStats
     {
         public double TotalScoreboard { get; set; }

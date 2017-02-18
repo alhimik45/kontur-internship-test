@@ -4,6 +4,7 @@ using Kontur.GameStats.Server.Extensions;
 
 namespace Kontur.GameStats.Server.Data
 {
+    [Serializable]
     public class InternalServerStats
     {
         public DateTime LastMatchDay { get; set; }

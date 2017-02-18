@@ -12,27 +12,29 @@ namespace Kontur.GameStats.Tests
     [TestFixture]
     public class PersistenceTest : NancyTest
     {
-        private const string DbName = "PersistenceTest";
-
         [OneTimeSetUp]
         public void DeleteDb()
         {
-            File.Delete($"{DbName}-players.db");
-            File.Delete($"{DbName}-servers.db");
-            File.Delete($"{DbName}-journal.db");
+            if (Directory.Exists("Servers"))
+            {
+                Directory.Delete("Servers", true);
+            }
+            if (Directory.Exists("Players"))
+            {
+                Directory.Delete("Players", true);
+            }
         }
 
         [SetUp]
         public void CreateModuleAndConnect()
         {
-            Bootstrapper = new NancyBootstrapper(DbName);
+            Bootstrapper = new NancyBootstrapper();
             Browser = new Browser(Bootstrapper);
         }
 
         [TearDown]
         public void TearDown()
         {
-            DisposeModule();
             DeleteDb();
         }
 
@@ -42,7 +44,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnAdvertiseInfo_AfterDisposing()
+        public void StatModule_ShouldReturnAdvertiseInfo_AfterRestart()
         {
             SendAdvertise(Endpoints[0], Advertises[0]);
 
@@ -56,7 +58,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnMatchInfo_AfterDisposing()
+        public void StatModule_ShouldReturnMatchInfo_AfterRestart()
         {
             SendAdvertise(Endpoints[0], Advertises[0]);
             SendMatchInfo(Endpoints[0], Timestamps[0], Matches[0]);
@@ -71,7 +73,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnAllServersInfo_AfterDisposing()
+        public void StatModule_ShouldReturnAllServersInfo_AfterRestart()
         {
             SendAdvertise(Endpoints[0], Advertises[0]);
             SendAdvertise(Endpoints[0], Advertises[1]);
@@ -99,7 +101,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnServerStats_AfterDisposing()
+        public void StatModule_ShouldReturnServerStats_AfterRestart()
         {
             SendStatsTestData();
 
@@ -113,7 +115,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnPlayerStats_AfterDisposing()
+        public void StatModule_ShouldReturnPlayerStats_AfterRestart()
         {
             SendStatsTestData();
 
@@ -127,7 +129,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnRecentMatches_AfterDisposing()
+        public void StatModule_ShouldReturnRecentMatches_AfterRestart()
         {
             var matches = SendRecentMatchesReportTestData();
 
@@ -141,7 +143,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnBestPlayers_AfterDisposing()
+        public void StatModule_ShouldReturnBestPlayers_AfterRestart()
         {
             var matches = SendBestPlayerReportTestData();
 
@@ -154,7 +156,7 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
-        public void StatModule_ShouldReturnPopularServers_AfterDisposing()
+        public void StatModule_ShouldReturnPopularServers_AfterRestart()
         {
             var matches = SendPopularServersReportTestData();
 
