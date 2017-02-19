@@ -40,7 +40,7 @@ namespace Kontur.GameStats.Server.Logic
         {
             for (var i = 0; i < info.Scoreboard.Count; ++i)
             {
-                CalcPlayerStats(endpoint, timestamp, i, info);
+                CalcPlayerStats(endpoint.ToLower(), timestamp, i, info);
             }
         }
 

@@ -217,12 +217,12 @@ namespace Kontur.GameStats.Tests
         {
             new AdvertiseInfo
             {
-                Name = "Server",
+                Name = "server",
                 GameModes = new List<string> { "DM", "TDM", "CTF" }
             },
             new AdvertiseInfo
             {
-                Name = "Server2",
+                Name = "server2",
                 GameModes = new List<string> { "35hp", "ZE" }
             },
             new AdvertiseInfo

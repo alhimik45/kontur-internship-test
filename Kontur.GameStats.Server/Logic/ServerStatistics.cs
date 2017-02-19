@@ -53,20 +53,21 @@ namespace Kontur.GameStats.Server.Logic
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
-            lock (_locks.GetOrAdd(endpoint, _ => new object()))
+            var lowerEndpoint = endpoint.ToLower();
+            lock (_locks.GetOrAdd(lowerEndpoint, _ => new object()))
             {
-                _servers[endpoint] = info;
+                _servers[lowerEndpoint] = info;
             }
         }
 
         public bool HasAdvertise(string endpoint)
         {
-            return _servers.ContainsKey(endpoint);
+            return _servers.ContainsKey(endpoint.ToLower());
         }
 
         public AdvertiseInfo GetAdvertise(string endpoint)
         {
-            return _servers[endpoint];
+            return _servers[endpoint.ToLower()];
         }
 
         public List<ServersInfoItem> GetAll()
@@ -82,22 +83,23 @@ namespace Kontur.GameStats.Server.Logic
 
         public void PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
-            var key = DoubleKey.Of(endpoint, timestamp);
-            lock (_locks.GetOrAdd(endpoint, _ => new object()))
+            var lowerEndpoint = endpoint.ToLower();
+            var key = DoubleKey.Of(lowerEndpoint, timestamp);
+            lock (_locks.GetOrAdd(lowerEndpoint, _ => new object()))
             {
                 _matches[key] = info;
-                CalcStats(endpoint, timestamp, info);
+                CalcStats(lowerEndpoint, timestamp, info);
             }
         }
 
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
-            return _matches[DoubleKey.Of(endpoint, timestamp)];
+            return _matches[DoubleKey.Of(endpoint.ToLower(), timestamp)];
         }
 
         public PublicServerStats GetStats(string endpoint)
         {
-            return _stats[endpoint]?.PublicStats;
+            return _stats[endpoint.ToLower()]?.PublicStats;
         }
 
         public List<RecentMatchesItem> GetRecentMatches(int count)
