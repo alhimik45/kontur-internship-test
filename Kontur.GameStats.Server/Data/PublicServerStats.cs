@@ -6,7 +6,7 @@ using Kontur.GameStats.Server.Extensions;
 namespace Kontur.GameStats.Server.Data
 {
     [Serializable]
-    public class ServerStatsInfo
+    public class PublicServerStats
     {
         public int TotalMatchesPlayed { get; set; }
         public int MaximumMatchesPerDay { get; set; }
@@ -16,22 +16,21 @@ namespace Kontur.GameStats.Server.Data
         public List<string> Top5GameModes { get; set; } = new List<string>();
         public List<string> Top5Maps { get; set; } = new List<string>();
 
-        public ServerStatsInfo CalcNew(MatchInfo info, InternalServerStats internalStats)
+        public PublicServerStats CalcNew(MatchInfo info, ServerStats internalStats)
         {
-            var totalMatches = TotalMatchesPlayed + 1;
-            return new ServerStatsInfo
+            return new PublicServerStats
             {
-                TotalMatchesPlayed = totalMatches,
+                TotalMatchesPlayed = TotalMatchesPlayed + 1,
                 Top5Maps = GetTop5Maps(info, internalStats),
                 Top5GameModes = GetTop5Modes(info, internalStats),
                 MaximumMatchesPerDay = Math.Max(MaximumMatchesPerDay, internalStats.MatchesInLastDay),
-                AverageMatchesPerDay = (double)totalMatches / internalStats.DaysWithMatchesCount,
+                AverageMatchesPerDay = (double)(TotalMatchesPlayed + 1) / internalStats.DaysWithMatches,
                 MaximumPopulation = Math.Max(MaximumPopulation, info.Scoreboard.Count),
-                AveragePopulation = (double)internalStats.TotalPopulation / totalMatches
+                AveragePopulation = (double)internalStats.TotalPopulation / (TotalMatchesPlayed + 1)
             };
         }
 
-        private List<string> GetTop5Maps(MatchInfo info, InternalServerStats internalStats)
+        private List<string> GetTop5Maps(MatchInfo info, ServerStats internalStats)
         {
             return Top5Maps.ToList().UpdateTop(5,
                 m => internalStats.MapFrequency[m],
@@ -39,7 +38,7 @@ namespace Kontur.GameStats.Server.Data
                 info.Map).ToList();
         }
 
-        private List<string> GetTop5Modes(MatchInfo info, InternalServerStats internalStats)
+        private List<string> GetTop5Modes(MatchInfo info, ServerStats internalStats)
         {
             return Top5GameModes.ToList().UpdateTop(5,
                 m => internalStats.GameModeFrequency[m],

@@ -496,7 +496,7 @@ namespace Kontur.GameStats.Tests
             }
         };
 
-        protected readonly ServerStatsInfo ServerStats = new ServerStatsInfo
+        protected readonly PublicServerStats ServerStats = new PublicServerStats
         {
             AverageMatchesPerDay = 7.0 / 3,
             AveragePopulation = 20 / 7.0,
@@ -517,7 +517,7 @@ namespace Kontur.GameStats.Tests
         };
 
         //stats of "p1" player
-        protected readonly PlayerStatsInfo PlayerStats = new PlayerStatsInfo
+        protected readonly PublicPlayerStats PlayerStats = new PublicPlayerStats
         {
             TotalMatchesPlayed = 6,
             TotalMatchesWon = 4,

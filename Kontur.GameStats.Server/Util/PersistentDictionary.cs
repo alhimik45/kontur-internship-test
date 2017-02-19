@@ -11,7 +11,7 @@ using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
 {
-    public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>> where TValue: new()
+    public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>>
     {
         private readonly string _innerValues = Path.DirectorySeparatorChar + "Inner";
         private readonly string _collectionName;
@@ -45,12 +45,7 @@ namespace Kontur.GameStats.Server.Util
         private void ReadValue(string dir, string key, IFormatter formatter)
         {
             var filePath = dir + _collectionName;
-            if (!File.Exists(filePath))
-            {
-                //if no data found for key initialize with default value
-                this[key] = new TValue();
-                return;
-            }
+            if (!File.Exists(filePath)) return;
             try
             {
                 using (var fs = new FileStream(filePath, FileMode.Open))
@@ -60,8 +55,8 @@ namespace Kontur.GameStats.Server.Util
             }
             catch (SerializationException)
             {
-                //if there bad data replace it with default value
-                this[key] = new TValue();
+                //if there bad data, delete it
+                File.Delete(filePath);
             }
         }
 
@@ -81,8 +76,8 @@ namespace Kontur.GameStats.Server.Util
                 }
                 catch (SerializationException)
                 {
-                    //if there bad data replace it with default value
-                    this[key] = new TValue();
+                    //if there bad data, delete it
+                    File.Delete(file);
                 }
             }
         }

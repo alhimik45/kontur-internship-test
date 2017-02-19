@@ -109,7 +109,7 @@ namespace Kontur.GameStats.Tests
             CreateModuleAndConnect();
 
             var result = Get(ServerStatsPath(Endpoints[0]));
-            var info = result.Body.DeserializeJson<ServerStatsInfo>();
+            var info = result.Body.DeserializeJson<PublicServerStats>();
 
             info.ShouldBeEquivalentTo(ServerStats, options => options.WithStrictOrdering());
         }
@@ -123,7 +123,7 @@ namespace Kontur.GameStats.Tests
             CreateModuleAndConnect();
 
             var result = Get(PlayerStatsPath("p1"));
-            var info = result.Body.DeserializeJson<PlayerStatsInfo>();
+            var info = result.Body.DeserializeJson<PublicPlayerStats>();
 
             info.ShouldBeEquivalentTo(PlayerStats);
         }

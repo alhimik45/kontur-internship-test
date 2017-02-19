@@ -83,12 +83,12 @@
   <ItemGroup>
     <Compile Include="Util\DoubleKey.cs" />
     <Compile Include="Data\BestPlayersItem.cs" />
-    <Compile Include="Data\InternalPlayerStats.cs" />
-    <Compile Include="Data\PlayerStatsInfo.cs" />
+    <Compile Include="Data\PlayerStats.cs" />
+    <Compile Include="Data\PublicPlayerStats.cs" />
     <Compile Include="Data\PopularServersItem.cs" />
     <Compile Include="Data\RecentMatchesItem.cs" />
-    <Compile Include="Data\InternalServerStats.cs" />
-    <Compile Include="Data\ServerStatsInfo.cs" />
+    <Compile Include="Data\ServerStats.cs" />
+    <Compile Include="Data\PublicServerStats.cs" />
     <Compile Include="Data\ServersInfoItem.cs" />
     <Compile Include="Data\MatchInfo.cs" />
     <Compile Include="Data\AdvertiseInfo.cs" />

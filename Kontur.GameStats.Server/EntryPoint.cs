@@ -87,6 +87,7 @@ namespace Kontur.GameStats.Server
             {
                 Console.Error.WriteLine("Error starting server");
                 Console.Error.WriteLine(e.InnerException?.Message ?? e.Message);
+                Console.Error.WriteLine(e.InnerException?.StackTrace ?? e.StackTrace);
             }
         }
 

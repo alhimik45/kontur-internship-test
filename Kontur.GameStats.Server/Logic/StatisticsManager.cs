@@ -51,12 +51,12 @@ namespace Kontur.GameStats.Server.Logic
             return _serverStatistics.GetAll();
         }
 
-        public ServerStatsInfo GetServerStats(string endpoint)
+        public PublicServerStats GetServerStats(string endpoint)
         {
             return _serverStatistics.GetStats(endpoint);
         }
 
-        public PlayerStatsInfo GetPlayerStats(string name)
+        public PublicPlayerStats GetPlayerStats(string name)
         {
             return _playerStatistics.GetStats(name);
         }

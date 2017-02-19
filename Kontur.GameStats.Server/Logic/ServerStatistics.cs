@@ -15,8 +15,7 @@ namespace Kontur.GameStats.Server.Logic
 
         private readonly PersistentDictionary<AdvertiseInfo> _servers;
         private readonly PersistentDictionary<MatchInfo> _matches;
-        private readonly PersistentDictionary<ServerStatsInfo> _stats;
-        private readonly PersistentDictionary<InternalServerStats> _internalStats;
+        private readonly PersistentDictionary<ServerStats> _stats;
         private readonly List<RecentMatchesItem> _recentMatches;
         private readonly List<PopularServersItem> _popularServers;
 
@@ -27,8 +26,7 @@ namespace Kontur.GameStats.Server.Logic
             _maxReportSize = maxReportSize;
 
             _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise", false);
-            _internalStats = new PersistentDictionary<InternalServerStats>("Servers", "InternalServerStats", false);
-            _stats = new PersistentDictionary<ServerStatsInfo>("Servers", "ServerStats", false);
+            _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats", false);
             _matches = new PersistentDictionary<MatchInfo>("Servers", "Match", true);
             _recentMatches =_matches
                 .OrderByDescending(kv => kv.Key.Split(Path.DirectorySeparatorChar).Last().ToUtc())
@@ -41,12 +39,12 @@ namespace Kontur.GameStats.Server.Logic
                 .Take(maxReportSize)
                 .ToList();
             _popularServers = _stats
-                .OrderByDescending(kv => kv.Value.AverageMatchesPerDay)
+                .OrderByDescending(kv => kv.Value.PublicStats.AverageMatchesPerDay)
                 .Select(kv => new PopularServersItem
                 {
                     Endpoint = kv.Key,
                     Name = _servers[kv.Key].Name,
-                    AverageMatchesPerDay = kv.Value.AverageMatchesPerDay
+                    AverageMatchesPerDay = kv.Value.PublicStats.AverageMatchesPerDay
                 })
                 .Take(maxReportSize)
                 .ToList();
@@ -97,45 +95,46 @@ namespace Kontur.GameStats.Server.Logic
             return _matches[DoubleKey.Of(endpoint, timestamp)];
         }
 
-        public ServerStatsInfo GetStats(string endpoint)
+        public PublicServerStats GetStats(string endpoint)
         {
-            return _stats[endpoint];
+            return _stats[endpoint]?.PublicStats;
         }
 
         public List<RecentMatchesItem> GetRecentMatches(int count)
         {
-            return _recentMatches.Take(count).ToList();
+            lock (_recentMatches)
+            {
+                return _recentMatches.Take(count).ToList();
+            }
         }
 
         public List<PopularServersItem> GetPopularServers(int count)
         {
-            return _popularServers.Take(count).ToList();
+            lock (_popularServers)
+            {
+                return _popularServers.Take(count).ToList();
+            }
         }
 
         private void CalcStats(string endpoint, string timestamp, MatchInfo info)
         {
             var time = timestamp.ToUtc();
-            ServerStatsInfo oldStats;
-            InternalServerStats internalStats;
+            ServerStats oldStats;
             if (!_stats.TryGetValue(endpoint, out oldStats))
             {
-                internalStats = new InternalServerStats { LastMatchDay = time.Date };
-                _internalStats[endpoint] = internalStats;
-                oldStats = new ServerStatsInfo();
-            }
-            else
-            {
-                internalStats = _internalStats[endpoint];
+                oldStats = new ServerStats
+                {
+                    LastMatchDay = time.Date,
+                    PublicStats = new PublicServerStats()
+                };
             }
 
-            internalStats.Update(time, info);
+            var newStats = oldStats.CalcNew(time, info);
             var serverName = _servers[endpoint].Name;
-            var newStats = oldStats.CalcNew(info, internalStats);
-
-            _internalStats[endpoint] = internalStats;
+            newStats.PublicStats = oldStats.PublicStats.CalcNew(info, newStats);
 
             UpdateRecentMatchesReport(endpoint, timestamp, info);
-            UpdatePopularServersReport(serverName, endpoint, newStats);
+            UpdatePopularServersReport(serverName, endpoint, newStats.PublicStats);
 
             _stats[endpoint] = newStats;
         }
@@ -156,7 +155,7 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
-        private void UpdatePopularServersReport(string serverName, string endpoint, ServerStatsInfo info)
+        private void UpdatePopularServersReport(string serverName, string endpoint, PublicServerStats info)
         {
             lock (_popularServers)
             {

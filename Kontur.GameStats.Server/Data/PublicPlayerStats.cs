@@ -5,7 +5,7 @@ using Kontur.GameStats.Server.Extensions;
 namespace Kontur.GameStats.Server.Data
 {
     [Serializable]
-    public class PlayerStatsInfo
+    public class PublicPlayerStats
     {
         public int TotalMatchesPlayed { get; set; }
         public int TotalMatchesWon { get; set; }
@@ -18,24 +18,24 @@ namespace Kontur.GameStats.Server.Data
         public string LastMatchPlayed { get; set; }
         public double KillToDeathRatio { get; set; }
 
-        public PlayerStatsInfo CalcNew(string endpoint, string timestamp, int place, InternalPlayerStats internalStats, MatchInfo matchInfo, PlayerMatchInfo info)
+        public PublicPlayerStats CalcNew(string endpoint, string timestamp, int place, PlayerStats stats, MatchInfo matchInfo, PlayerMatchInfo info)
         {
             var time = timestamp.ToUtc();
             var totalMatches = TotalMatchesPlayed + 1;
-            var favoriteServer = UpdateFavorite(internalStats.ServerFrequency, endpoint, FavoriteServer);
-            var favoriteGameMode = UpdateFavorite(internalStats.GameModeFrequency, matchInfo.GameMode, FavoriteGameMode);
-            return new PlayerStatsInfo
+            var favoriteServer = UpdateFavorite(stats.ServerFrequency, endpoint, FavoriteServer);
+            var favoriteGameMode = UpdateFavorite(stats.GameModeFrequency, matchInfo.GameMode, FavoriteGameMode);
+            return new PublicPlayerStats
             {
                 TotalMatchesPlayed = totalMatches,
                 LastMatchPlayed = GetLastTimePlayed(timestamp),
                 FavoriteServer = favoriteServer,
                 FavoriteGameMode = favoriteGameMode,
-                UniqueServers = internalStats.ServerFrequency.Count,
+                UniqueServers = stats.ServerFrequency.Count,
                 TotalMatchesWon = TotalMatchesWon + (place == 1 ? 1 : 0),
-                AverageScoreboardPercent = internalStats.TotalScoreboard / totalMatches,
-                MaximumMatchesPerDay = Math.Max(MaximumMatchesPerDay, internalStats.MatchesPerDay[time.Date]),
-                AverageMatchesPerDay = (double)totalMatches / internalStats.MatchesPerDay.Count,
-                KillToDeathRatio = (double)internalStats.TotalKills / internalStats.TotalDeaths
+                AverageScoreboardPercent = stats.TotalScoreboard / totalMatches,
+                MaximumMatchesPerDay = Math.Max(MaximumMatchesPerDay, stats.MatchesPerDay[time.Date]),
+                AverageMatchesPerDay = (double)totalMatches / stats.MatchesPerDay.Count,
+                KillToDeathRatio = (double)stats.TotalKills / stats.TotalDeaths
             };
         }
 

@@ -12,8 +12,7 @@ namespace Kontur.GameStats.Server.Logic
     {
         private readonly int _maxReportSize;
 
-        private readonly PersistentDictionary<PlayerStatsInfo> _stats;
-        private readonly PersistentDictionary<InternalPlayerStats> _internalStats;
+        private readonly PersistentDictionary<PlayerStats> _stats;
         private readonly List<BestPlayersItem> _bestPlayers;
 
         private readonly ConcurrentDictionary<string, object> _locks = new ConcurrentDictionary<string, object>();
@@ -22,15 +21,15 @@ namespace Kontur.GameStats.Server.Logic
         {
             _maxReportSize = maxReportSize;
 
-            _stats = new PersistentDictionary<PlayerStatsInfo>("Players", "PlayerStats", false);
-            _internalStats = new PersistentDictionary<InternalPlayerStats>("Players", "InternalPlayerStats", false);
+            _stats = new PersistentDictionary<PlayerStats>("Players", "PlayerStats", false);
+
             _bestPlayers = _stats
-                .Where(kv => kv.Value.TotalMatchesPlayed >= 10 && _internalStats[kv.Key].TotalDeaths != 0)
-                .OrderByDescending(kv => kv.Value.KillToDeathRatio)
+                .Where(kv => kv.Value.PublicStats.TotalMatchesPlayed >= 10 && _stats[kv.Key].TotalDeaths != 0)
+                .OrderByDescending(kv => kv.Value.PublicStats.KillToDeathRatio)
                 .Select(kv => new BestPlayersItem
                 {
                     Name = kv.Key,
-                    KillToDeathRatio = kv.Value.KillToDeathRatio
+                    KillToDeathRatio = kv.Value.PublicStats.KillToDeathRatio
                 })
                 .Take(maxReportSize)
                 .ToList();
@@ -45,14 +44,17 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
-        public PlayerStatsInfo GetStats(string name)
+        public PublicPlayerStats GetStats(string name)
         {
-            return _stats[name.ToLower()];
+            return _stats[name.ToLower()]?.PublicStats;
         }
 
         public List<BestPlayersItem> GetBestPlayers(int count)
         {
-            return _bestPlayers.Take(count).ToList();
+            lock (_bestPlayers)
+            {
+                return _bestPlayers.Take(count).ToList();
+            }
         }
 
         private void CalcPlayerStats(string endpoint, string timestamp, int index, MatchInfo matchInfo)
@@ -63,33 +65,25 @@ namespace Kontur.GameStats.Server.Logic
             lock (_locks.GetOrAdd(playerName, _ => new object()))
             {
                 var place = index + 1;
-                PlayerStatsInfo oldStats;
-                InternalPlayerStats internalStats;
+                PlayerStats oldStats;
                 if (!_stats.TryGetValue(playerName, out oldStats))
                 {
-                    internalStats = new InternalPlayerStats();
-                    _internalStats[playerName] = internalStats;
-                    oldStats = new PlayerStatsInfo();
+                    oldStats = new PlayerStats { PublicStats = new PublicPlayerStats() };
                 }
-                else
+
+                var newStats = oldStats.CalcNew(timestamp.ToUtc(), place, matchInfo, info);
+
+                newStats.PublicStats = oldStats.PublicStats.CalcNew(endpoint, timestamp, place, newStats, matchInfo, info);
+
+                if (newStats.TotalDeaths != 0 && newStats.PublicStats.TotalMatchesPlayed >= 10)
                 {
-                    internalStats = _internalStats[playerName];
+                    UpdateBestPlayersReport(playerName, newStats.PublicStats);
                 }
-
-                internalStats.Update(timestamp.ToUtc(), place, matchInfo, info);
-
-                var newStats = oldStats.CalcNew(endpoint, timestamp, place, internalStats, matchInfo, info);
-
-                if (internalStats.TotalDeaths != 0 && newStats.TotalMatchesPlayed >= 10)
-                {
-                    UpdateBestPlayersReport(playerName, newStats);
-                }
-                _internalStats[playerName] = internalStats;
                 _stats[playerName] = newStats;
             }
         }
 
-        private void UpdateBestPlayersReport(string name, PlayerStatsInfo info)
+        private void UpdateBestPlayersReport(string name, PublicPlayerStats info)
         {
             lock (_bestPlayers)
             {
