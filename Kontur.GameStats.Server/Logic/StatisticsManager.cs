@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Kontur.GameStats.Server.Data;
-using Kontur.GameStats.Server.Extensions;
+using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Logic
 {

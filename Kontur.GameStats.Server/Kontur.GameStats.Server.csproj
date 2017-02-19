@@ -81,7 +81,6 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Util\DoubleKey.cs" />
     <Compile Include="Data\BestPlayersItem.cs" />
     <Compile Include="Data\PlayerStats.cs" />
     <Compile Include="Data\PublicPlayerStats.cs" />
@@ -93,8 +92,8 @@
     <Compile Include="Data\MatchInfo.cs" />
     <Compile Include="Data\AdvertiseInfo.cs" />
     <Compile Include="Data\PlayerMatchInfo.cs" />
-    <Compile Include="Extensions\CollectionExtensions.cs" />
-    <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Util\CollectionExtensions.cs" />
+    <Compile Include="Util\StringExtensions.cs" />
     <Compile Include="PageNotFoundHandler.cs" />
     <Compile Include="Logic\PlayerStatistics.cs" />
     <Compile Include="Logic\ServerStatistics.cs" />

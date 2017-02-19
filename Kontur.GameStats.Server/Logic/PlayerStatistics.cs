@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
-using Kontur.GameStats.Server.Extensions;
 using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Logic

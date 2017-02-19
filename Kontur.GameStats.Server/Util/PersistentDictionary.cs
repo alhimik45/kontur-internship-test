@@ -6,14 +6,13 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
-using Kontur.GameStats.Server.Extensions;
 using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
 {
     public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>>
     {
-        private readonly string _innerValues = Path.DirectorySeparatorChar + "Inner";
+        private readonly string _innerValuesDirName = Path.DirectorySeparatorChar + "Inner";
         private readonly string _collectionName;
         private readonly string _basePath;
         private readonly ConcurrentDictionary<string, TValue> _storage;
@@ -32,7 +31,7 @@ namespace Kontur.GameStats.Server.Util
                     var key = Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
                     if (doubleKey)
                     {
-                        ReadInnerValues(dir + _innerValues, key, formatter);
+                        ReadInnerValues(dir + _innerValuesDirName, key, formatter);
                     }
                     else
                     {
@@ -84,7 +83,9 @@ namespace Kontur.GameStats.Server.Util
 
         private static string GetKeyPath(string key)
         {
-            return Math.Abs(key.GetHashCode()).ToString().Substring(0, 3) + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
+            var stringHash = Math.Abs(key.GetHashCode()).ToString();
+            var dirName = stringHash.Length > 3 ? stringHash.Substring(0, 3) : stringHash;
+            return dirName + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
         }
 
         public TValue this[string key]
@@ -103,14 +104,14 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
-        public TValue this[DoubleKey key]
+        public TValue this[string key1, string key2]
         {
-            get { return _storage.Get(key.ToString()); }
+            get { return _storage.Get(key1 + Path.DirectorySeparatorChar + key2); }
             set
             {
-                _storage[key.ToString()] = value;
-                var innerPath = _basePath + GetKeyPath(key.Key1) + _innerValues;
-                var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key.Key2);
+                _storage[key1 + Path.DirectorySeparatorChar + key2] = value;
+                var innerPath = _basePath + GetKeyPath(key1) + _innerValuesDirName;
+                var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key2);
                 Directory.CreateDirectory(innerPath);
                 var formatter = new BinaryFormatter();
                 using (var fs = new FileStream(innerFile, FileMode.Create))

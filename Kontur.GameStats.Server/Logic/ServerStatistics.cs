@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
-using Kontur.GameStats.Server.Extensions;
 using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Logic
@@ -84,17 +83,16 @@ namespace Kontur.GameStats.Server.Logic
         public void PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
             var lowerEndpoint = endpoint.ToLower();
-            var key = DoubleKey.Of(lowerEndpoint, timestamp);
             lock (_locks.GetOrAdd(lowerEndpoint, _ => new object()))
             {
-                _matches[key] = info;
+                _matches[lowerEndpoint, timestamp] = info;
                 CalcStats(lowerEndpoint, timestamp, info);
             }
         }
 
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
-            return _matches[DoubleKey.Of(endpoint.ToLower(), timestamp)];
+            return _matches[endpoint.ToLower(), timestamp];
         }
 
         public PublicServerStats GetStats(string endpoint)

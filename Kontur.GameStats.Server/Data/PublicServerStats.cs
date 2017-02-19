@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kontur.GameStats.Server.Extensions;
+using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Data
 {
