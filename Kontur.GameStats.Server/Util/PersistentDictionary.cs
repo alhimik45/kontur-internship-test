@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -12,13 +13,15 @@ namespace Kontur.GameStats.Server.Util
 {
     public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>>
     {
+        private readonly bool _noKeyFolder;
         private readonly string _innerValuesDirName = Path.DirectorySeparatorChar + "Inner";
         private readonly string _collectionName;
         private readonly string _basePath;
         private readonly ConcurrentDictionary<string, TValue> _storage;
 
-        public PersistentDictionary(string basePath, string collectionName, bool doubleKey)
+        public PersistentDictionary(string basePath, string collectionName, bool doubleKey = false, bool noKeyFolder = false)
         {
+            _noKeyFolder = noKeyFolder;
             _collectionName = Path.DirectorySeparatorChar + collectionName;
             _basePath = basePath + Path.DirectorySeparatorChar;
             _storage = new ConcurrentDictionary<string, TValue>();
@@ -26,36 +29,55 @@ namespace Kontur.GameStats.Server.Util
             Directory.CreateDirectory(basePath);
             foreach (var outDir in Directory.GetDirectories(basePath))
             {
-                foreach (var dir in Directory.GetDirectories(outDir))
+                if (noKeyFolder)
                 {
-                    var key = Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
-                    if (doubleKey)
+                    foreach (var file in Directory.GetFiles(outDir))
                     {
-                        ReadInnerValues(dir + _innerValuesDirName, key, formatter);
-                    }
-                    else
-                    {
-                        ReadValue(dir, key, formatter);
+                        var key = GetUnescapedName(file);
+                        ReadValue(file, key, formatter);
                     }
                 }
+                else
+                {
+                    foreach (var dir in Directory.GetDirectories(outDir))
+                    {
+                        var key = GetUnescapedName(dir);
+                        if (doubleKey)
+                        {
+                            ReadInnerValues(dir + _innerValuesDirName, key, formatter);
+                        }
+                        else
+                        {
+                            ReadValue(dir + _collectionName, key, formatter);
+                        }
+                    }
+                }
+
             }
         }
 
-        private void ReadValue(string dir, string key, IFormatter formatter)
+        private static string GetUnescapedName(string dir)
         {
-            var filePath = dir + _collectionName;
-            if (!File.Exists(filePath)) return;
+            return Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
+        }
+
+        private void ReadValue(string file, string key, IFormatter formatter)
+        {
+            if (!File.Exists(file)) return;
             try
             {
-                using (var fs = new FileStream(filePath, FileMode.Open))
+                using (var fs = new FileStream(file, FileMode.Open))
                 {
-                    _storage[key] = (TValue)formatter.Deserialize(fs);
+                    using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
+                    {
+                        _storage[key] = (TValue)formatter.Deserialize(ds);
+                    }
                 }
             }
             catch (SerializationException)
             {
                 //if there bad data, delete it
-                File.Delete(filePath);
+                File.Delete(file);
             }
         }
 
@@ -69,8 +91,11 @@ namespace Kontur.GameStats.Server.Util
                 {
                     using (var fs = new FileStream(file, FileMode.Open))
                     {
-                        _storage[key + Path.DirectorySeparatorChar + innerKey] =
-                            (TValue)formatter.Deserialize(fs);
+                        using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
+                        {
+                            _storage[key + Path.DirectorySeparatorChar + innerKey] =
+                                (TValue)formatter.Deserialize(ds);
+                        }
                     }
                 }
                 catch (SerializationException)
@@ -83,8 +108,7 @@ namespace Kontur.GameStats.Server.Util
 
         private static string GetKeyPath(string key)
         {
-            var stringHash = Math.Abs(key.GetHashCode()).ToString();
-            var dirName = stringHash.Length > 3 ? stringHash.Substring(0, 3) : stringHash;
+            var dirName = Math.Abs(key.GetHashCode() % 3000).ToString();
             return dirName + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
         }
 
@@ -94,12 +118,27 @@ namespace Kontur.GameStats.Server.Util
             set
             {
                 _storage[key] = value;
-                var path = _basePath + GetKeyPath(key) + Path.DirectorySeparatorChar;
-                Directory.CreateDirectory(path);
-                var formatter = new BinaryFormatter();
-                using (var fs = new FileStream(path + _collectionName, FileMode.Create))
+                var path = _basePath;
+                string filepath;
+                if (_noKeyFolder)
                 {
-                    formatter.Serialize(fs, value);
+                    path += GetKeyPath(key);
+                    filepath = path;
+                }
+                else
+                {
+                    path += GetKeyPath(key) + Path.DirectorySeparatorChar;
+                    filepath = path + _collectionName;
+                }
+                // ReSharper disable once AssignNullToNotNullAttribute
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                var formatter = new BinaryFormatter();
+                using (var fs = new FileStream(filepath, FileMode.Create))
+                {
+                    using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
+                    {
+                        formatter.Serialize(ds, value);
+                    }
                 }
             }
         }
@@ -116,7 +155,10 @@ namespace Kontur.GameStats.Server.Util
                 var formatter = new BinaryFormatter();
                 using (var fs = new FileStream(innerFile, FileMode.Create))
                 {
-                    formatter.Serialize(fs, value);
+                    using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
+                    {
+                        formatter.Serialize(ds, value);
+                    }
                 }
             }
         }

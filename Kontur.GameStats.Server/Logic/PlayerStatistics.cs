@@ -20,7 +20,7 @@ namespace Kontur.GameStats.Server.Logic
         {
             _maxReportSize = maxReportSize;
 
-            _stats = new PersistentDictionary<PlayerStats>("Players", "PlayerStats", false);
+            _stats = new PersistentDictionary<PlayerStats>("Players", "PlayerStats", noKeyFolder: true);
 
             _bestPlayers = _stats
                 .Where(kv => kv.Value.PublicStats.TotalMatchesPlayed >= 10 && _stats[kv.Key].TotalDeaths != 0)

@@ -24,9 +24,9 @@ namespace Kontur.GameStats.Server.Logic
         {
             _maxReportSize = maxReportSize;
 
-            _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise", false);
-            _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats", false);
-            _matches = new PersistentDictionary<MatchInfo>("Servers", "Match", true);
+            _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise");
+            _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats");
+            _matches = new PersistentDictionary<MatchInfo>("Servers", "Match", doubleKey: true);
             _recentMatches =_matches
                 .OrderByDescending(kv => kv.Key.Split(Path.DirectorySeparatorChar).Last().ToUtc())
                 .Select(kv => new RecentMatchesItem
@@ -47,7 +47,7 @@ namespace Kontur.GameStats.Server.Logic
                 })
                 .Take(maxReportSize)
                 .ToList();
-            Console.WriteLine("rdy");
+            Console.WriteLine("rdys");
         }
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
