@@ -1,21 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Reflection;
 using Fclp;
-using Kontur.GameStats.Server.Data;
-using Kontur.GameStats.Server.Util;
 using Microsoft.Owin.Hosting;
 
 namespace Kontur.GameStats.Server
 {
     public class EntryPoint
     {
-        class S
-        {
-            public int Id { get; set; }
-            public string V { get; set; }
-        }
-
         public static void Main(string[] args)
         {
             var commandLineParser = new FluentCommandLineParser<Options>();
@@ -36,33 +27,99 @@ namespace Kontur.GameStats.Server
 
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;
 
-            //var db = new LiteDatabase("test.db");
-            //var c = new PersistentDictionary<int, int>(db, "kek");
-            //var tt = new List<Thread>();
-            //for (int i = 0; i < 50; i++)
+            //Process currentProc = Process.GetCurrentProcess();
+            //Console.WriteLine("before " + GC.GetTotalMemory(true));
+            //Console.WriteLine("before " + currentProc.PrivateMemorySize64);
+
+            //var mat = new ConcurrentDictionary<string, ConcurrentDictionary<string, MatchInfo>>();
+            //var pl = new ConcurrentDictionary<string, PlayerStats>();
+            //for (int i = 0; i < 10000; i++)
             //{
-            //    var ii = i;
-            //    var t = new Thread(() =>
+            //    var tt = new PlayerStats
             //    {
-            //        using (var trans = db.BeginTrans())
+            //        PublicStats = new PublicPlayerStats
             //        {
-            //            var r = new Random();
-            //            for (int j = 0; j < 5000; j++)
-            //            {
-            //                c[r.Next(500)] = r.Next();
-            //                //coll.Upsert(new S() { Id = r.Next(100), V = "str" });
-            //                //Thread.Sleep(r.Next(1500));
-            //            }
-            //            trans.Commit();
-            //        }
-            //    });
-            //    t.Start();
-            //    tt.Add(t);
+            //            KillToDeathRatio = 353445,
+            //            AverageMatchesPerDay = 43543,
+            //            FavoriteServer = "123456784901234567890123456789012345678901234567890" + i,
+            //            FavoriteGameMode = "1223",
+            //            TotalMatchesPlayed = 2334,
+            //            LastMatchPlayed = "123152312312312312",
+            //            AverageScoreboardPercent = 5353,
+            //            UniqueServers = 4534,
+            //            MaximumMatchesPerDay = 635,
+            //            TotalMatchesWon = 435635
+            //        },
+            //        TotalDeaths = 5634,
+            //        TotalKills = 534,
+            //        TotalScoreboard = 453,
+            //        GameModeFrequency = new ConcurrentDictionary<string, int>
+            //        {
+            //            ["wer"] = 435,
+            //            ["1wer"] = 435,
+            //            ["w2er"] = 435,
+            //            ["we3r"] = 435,
+            //            ["wer4"] = 435,
+            //            ["5wer"] = 435,
+            //            ["w6er"] = 435,
+            //            ["we7r"] = 435,
+            //            ["8wer"] = 435,
+            //            ["w9er"] = 435,
+            //        },
+            //        MatchesPerDay = new ConcurrentDictionary<DateTime, int>
+            //        {
+            //            [DateTime.Now] = 3454,
+            //            [DateTime.Now.AddDays(-1)] = 3454+i,
+            //            [DateTime.Now.AddDays(-2)] = 3454,
+            //            [DateTime.Now.AddDays(-3)] = 3454,
+            //            [DateTime.Now.AddDays(-4)] = 3454,
+            //            [DateTime.Now.AddDays(-5)] = 3454,
+            //            [DateTime.Now.AddDays(-6)] = 3454,
+            //            [DateTime.Now.AddDays(-7)] = 3454,
+            //            [DateTime.Now.AddDays(-8)] = 3454,
+            //            [DateTime.Now.AddDays(-9)] = 3454,
+            //            [DateTime.Now.AddDays(-10)] = 3454,
+            //            [DateTime.Now.AddDays(-11)] = 3454,
+            //            [DateTime.Now.AddDays(-12)] = 3454,
+            //            [DateTime.Now.AddDays(-13)] = 3454,
+            //            [DateTime.Now.AddDays(-14)] = 3454,
+            //        },
+            //        ServerFrequency = new ConcurrentDictionary<string, int>()
+            //    };
+            //    for (int j = 0; j < 5000; j++)
+            //    {
+            //        tt.ServerFrequency[i.ToString()] = 34635+j;
+            //    }
+            //    pl[i.ToString()] = tt;
             //}
-            //foreach (var thread in tt)
+            //Console.WriteLine("koe");
+            //for (int i = 0; i < 140000; i++)
             //{
-            //    thread.Join();
+            //    var mm = new MatchInfo
+            //    {
+            //        GameMode = "dfg",
+            //        Scoreboard = new List<PlayerMatchInfo>(),
+            //        Map = "12345678901234534567890123456789012345678901234567890" + i,
+            //        FragLimit = 355,
+            //        TimeLimit = 4354,
+            //        TimeElapsed = 35.652
+            //    };
+            //    for (int j = 0; j < 100; j++)
+            //    {
+            //        mm.Scoreboard.Add(new PlayerMatchInfo
+            //        {
+            //            Name = "123443545678901234567890123456789012345678901234567890" + i,
+            //            Deaths = 2345,
+            //            Kills = i,
+            //            Frags = i+i
+            //        });
+            //    }
+            //    mat.GetOrAdd(i.ToString(), _ => new ConcurrentDictionary<string, MatchInfo>())[i.ToString()] = mm;
             //}
+
+            //Console.WriteLine("after  " + GC.GetTotalMemory(true));
+            //Console.WriteLine("after  " + currentProc.PrivateMemorySize64);
+
 
             RunServer(commandLineParser.Object);
         }
