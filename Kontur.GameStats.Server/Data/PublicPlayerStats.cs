@@ -4,6 +4,9 @@ using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Data
 {
+    /// <summary>
+    /// Класс публичной статистики одного игрока - именно она отправляется в ответ на запрос
+    /// </summary>
     [Serializable]
     public class PublicPlayerStats
     {
@@ -18,6 +21,19 @@ namespace Kontur.GameStats.Server.Data
         public string LastMatchPlayed { get; set; }
         public double KillToDeathRatio { get; set; }
 
+        /// <summary>
+        /// Вычисляет новое значение статистики, основываясь на старой статистике и новых данных
+        /// </summary>
+        /// <param name="endpoint">Идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="place">Место игрока</param>
+        /// <param name="stats">Приватная статистика игрока</param>
+        /// <param name="matchInfo">Информация о матче</param>
+        /// <param name="info">Результаты игрока в матче</param>
+        /// <returns>
+        /// Новый экземпляр данного класса с обновлённой статистикой,
+        /// старый экземпляр не меняется из-за необходимости блокировок в многопоточной среде
+        /// </returns>
         public PublicPlayerStats CalcNew(string endpoint, string timestamp, int place, PlayerStats stats, MatchInfo matchInfo, PlayerMatchInfo info)
         {
             var time = timestamp.ToUtc();
@@ -39,6 +55,11 @@ namespace Kontur.GameStats.Server.Data
             };
         }
 
+        /// <summary>
+        /// Возвращает более позднее время, выбирая из предыдущего значения и нового
+        /// </summary>
+        /// <param name="timestamp">Новая временная метка окончания матча</param>
+        /// <returns>Временную метку, соответствующую более позднему времени</returns>
         private string GetLastTimePlayed(string timestamp)
         {
             if (LastMatchPlayed != null)
@@ -48,6 +69,14 @@ namespace Kontur.GameStats.Server.Data
             return timestamp;
         }
 
+        /// <summary>
+        /// Обновляет количество использований значения <paramref name="updatedValue"/>
+        /// и выбирает наиболее используемое из обновленного значения и старого значения
+        /// </summary>
+        /// <param name="frequency">Словарь с количеством использований всех значений</param>
+        /// <param name="updatedValue">Значение, количество использований которого увеличивается на 1</param>
+        /// <param name="oldValue">Старое самое используемое значение</param>
+        /// <returns>Строку - ключ словаря - соответствующую наиболее используемому значению</returns>
         private static string UpdateFavorite(IDictionary<string, int> frequency, string updatedValue, string oldValue)
         {
             var currentUsesCount = frequency.Get(updatedValue) + 1;

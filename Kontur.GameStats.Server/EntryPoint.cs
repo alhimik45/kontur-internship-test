@@ -5,6 +5,9 @@ using Microsoft.Owin.Hosting;
 
 namespace Kontur.GameStats.Server
 {
+    /// <summary>
+    /// Точка входа в приложение
+    /// </summary>
     public class EntryPoint
     {
         public static void Main(string[] args)
@@ -30,6 +33,9 @@ namespace Kontur.GameStats.Server
             RunServer(commandLineParser.Object);
         }
 
+        /// <summary>
+        /// Метод вызываемый при перехвате необработанного исключения
+        /// </summary>
         private static void UnhandledExceptionTrapper(object sender, UnhandledExceptionEventArgs e)
         {
             Console.Error.WriteLine("Unexepected error occured");
@@ -37,6 +43,9 @@ namespace Kontur.GameStats.Server
             Environment.Exit(1);
         }
 
+        /// <summary>
+        /// Запуск REST-сервера
+        /// </summary>
         private static void RunServer(Options options)
         {
             try

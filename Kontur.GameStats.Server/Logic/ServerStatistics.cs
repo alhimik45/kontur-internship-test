@@ -8,6 +8,9 @@ using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Logic
 {
+    /// <summary>
+    /// Класс, управляющий статистикой серверов
+    /// </summary>
     public class ServerStatistics
     {
         private const string PopularServersFilename = "Reports/PopularServers";
@@ -34,6 +37,11 @@ namespace Kontur.GameStats.Server.Logic
             _popularServers = Collections.Load<PopularServersItem>(PopularServersFilename);
         }
 
+        /// <summary>
+        /// Добавление advertise информации о сервере
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="info">Advertise-запрос</param>
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
         {
             var lowerEndpoint = endpoint.ToLower();
@@ -43,16 +51,27 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <summary>
+        /// Проверка на наличие информации о данно сервере
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <returns>true - сервер присылал advertise-запрос, false - не присылал </returns>
         public bool HasAdvertise(string endpoint)
         {
             return _servers.ContainsKey(endpoint.ToLower());
         }
 
+        /// <summary>
+        /// Получение advertise-запроса сервера
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <returns>Advertise-запрос или null, если сервер не анонсировал себя</returns>
         public AdvertiseInfo GetAdvertise(string endpoint)
         {
             return _servers[endpoint.ToLower()];
         }
 
+        /// <returns>Список с информацией о всех серверах</returns>
         public List<ServersInfoItem> GetAll()
         {
             return _servers.Select(kv => new ServersInfoItem
@@ -62,6 +81,16 @@ namespace Kontur.GameStats.Server.Logic
             });
         }
 
+        /// <summary>
+        /// Пересчитывает статистику сервера на основе информации о новом матче
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="info">Информация о матче</param>
+        /// <returns>
+        /// true - матч добавлен, false - матч отвергнут
+        /// (если для данной временной метки уже есть матч на данном сервере)
+        /// </returns>
         public bool PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
             var lowerEndpoint = endpoint.ToLower();
@@ -77,6 +106,9 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <returns>Информацию о матче или null, если матча не существует</returns>
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
             var lowerEndpoint = endpoint.ToLower();
@@ -86,11 +118,15 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <returns>Статистика сервера или null, если такого сервера нет, или на нём не было сыграно ни одного матча</returns>
         public PublicServerStats GetStats(string endpoint)
         {
             return _stats[endpoint.ToLower()]?.PublicStats;
         }
 
+        /// <param name="count">Количество недавних матчей</param>
+        /// <returns>Список недавних матчей</returns>
         public List<RecentMatchesItem> GetRecentMatches(int count)
         {
             lock (_recentMatches)
@@ -99,6 +135,8 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <param name="count">Количество популярных серверов</param>
+        /// <returns>Список популярных серверов</returns>
         public List<PopularServersItem> GetPopularServers(int count)
         {
             lock (_popularServers)
@@ -107,6 +145,12 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <summary>
+        /// Обновляет статистику сервера, основываясь на информации о новом матче
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="info">Информация о матче</param>
         private void CalcStats(string endpoint, string timestamp, MatchInfo info)
         {
             var time = timestamp.ToUtc();
@@ -130,6 +174,12 @@ namespace Kontur.GameStats.Server.Logic
             _stats[endpoint] = newStats;
         }
 
+        /// <summary>
+        /// Обновляет список недавних матчей, основываясь на времени окончания матча
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="info">Информация о матче</param>
         private void UpdateRecentMatchesReport(string endpoint, string timestamp, MatchInfo info)
         {
             lock (_recentMatches)
@@ -147,6 +197,12 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <summary>
+        ///  Обновляет список популярных серверов, основываясь на среднем количестве матчей в день
+        /// </summary>
+        /// <param name="serverName">Название сервера</param>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="info">Статистика сервера</param>
         private void UpdatePopularServersReport(string serverName, string endpoint, PublicServerStats info)
         {
             lock (_popularServers)

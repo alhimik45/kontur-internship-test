@@ -5,10 +5,18 @@ using Nancy.ModelBinding;
 
 namespace Kontur.GameStats.Server
 {
+    /// <summary>
+    /// Класс REST-сервера
+    /// </summary>
     public class StatModule : NancyModule
     {
         private readonly StatisticsManager _statisticsManager;
 
+        /// <summary>
+        /// Вешаем обработчики http запросов и указываем, как отвечать на возвращаемые данные
+        /// (данные отдавать, а на null возвращать другой http статус)
+        /// </summary>
+        /// <param name="statisticsManager"></param>
         public StatModule(StatisticsManager statisticsManager)
         {
             _statisticsManager = statisticsManager;

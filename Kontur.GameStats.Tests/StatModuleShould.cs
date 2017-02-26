@@ -173,6 +173,17 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
+        public void returnBadRequest_onPuttingMatchInfo_atAlreadyUserTimestamp()
+        {
+            SendAdvertise(Endpoints[0], Advertises[0]);
+            SendMatchInfo(Endpoints[0], Timestamps[0], Matches[0]);
+
+            var result = SendMatchInfo(Endpoints[0], Timestamps[0], Matches[1]);
+
+            result.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Test]
         public void returnStats_onServerStatsRequest_afterSendingData()
         {
             SendStatsTestData();

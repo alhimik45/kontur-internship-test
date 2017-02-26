@@ -10,6 +10,17 @@ using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
 {
+    /// <summary>
+    /// Класс словаря, сохраняющего своё состояние на диск
+    /// Имеет два режима работы:
+    /// 1) простой ключ: ключ - одна строка
+    ///     имеет ещё два варианта работы:
+    ///     1. ключ - папка, а в ней файл с именем в виде названия коллекции
+    ///     2. ключ - файл: используется, если по данным ключам не хранится несколько коллекций сразу
+    /// 2) двойной ключ: ключ - две строки
+    /// Также есть возможность зеркалирования в памяти:
+    /// все значения также хранятся в памяти и при запросе на чтение обращении к диску нет
+    /// </summary>
     public class PersistentDictionary<TValue>
     {
         private readonly bool _noKeyFolder;
@@ -19,6 +30,11 @@ namespace Kontur.GameStats.Server.Util
         private readonly string _basePath;
         private ConcurrentDictionary<string, TValue> _storage;
 
+        /// <param name="basePath">Папка, где будет храниться остальная информация словаря</param>
+        /// <param name="collectionName">Имя коллекции, используется для имени файла для хранения данных</param>
+        /// <param name="doubleKey">Используется ли в коллекции двойной ключ</param>
+        /// <param name="noKeyFolder">Является ли ключ папкой</param>
+        /// <param name="memoryMirror">Есть ли зеркалирование в памяти</param>
         public PersistentDictionary(string basePath, string collectionName, bool doubleKey = false, bool noKeyFolder = false, bool memoryMirror = false)
         {
             _noKeyFolder = noKeyFolder;
@@ -32,6 +48,10 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
+        /// <summary>
+        /// Загрузка значений коллекции, если они есть в память
+        /// </summary>
+        /// <param name="doubleKey">Используется ли в коллекции двойной ключ</param>
         private void InitMemoryStorage(bool doubleKey)
         {
             _storage = new ConcurrentDictionary<string, TValue>();
@@ -75,11 +95,41 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
-        private static string GetUnescapedName(string dir)
+        /// <summary>
+        /// Достаёт из пути имя последнего элемента и убирает экранизацию символов с него
+        /// </summary>
+        /// <returns>Название последнего элемента без экранизации</returns>
+        private static string GetUnescapedName(string path)
         {
-            return Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
+            return Uri.UnescapeDataString(path.Split(Path.DirectorySeparatorChar).Last());
         }
 
+        /// <summary>
+        /// Считывание данных в режиме двойной ключ
+        /// </summary>
+        /// <param name="dir">Путь до папки считывания</param>
+        /// <param name="key">Первый клбч из двух</param>
+        /// <param name="formatter">Десериализатор</param>
+        private void ReadInnerValues(string dir, string key, IFormatter formatter)
+        {
+            if (!Directory.Exists(dir)) return;
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                var innerKey = Uri.UnescapeDataString(file.Split(Path.DirectorySeparatorChar).Last());
+                var value = ReadValue(file, formatter);
+                if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
+                {
+                    _storage[key + Path.DirectorySeparatorChar + innerKey] = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Чтение значения из файла
+        /// </summary>
+        /// <param name="file">Путь к файлу</param>
+        /// <param name="formatter">Десериализатор</param>
+        /// <returns>Десериализованное значение или значение по-умолчанию, если считать не удалось</returns>
         private static TValue ReadValue(string file, IFormatter formatter)
         {
             if (!File.Exists(file)) return default(TValue);
@@ -101,26 +151,37 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
-        private void ReadInnerValues(string dir, string key, IFormatter formatter)
+        /// <summary>
+        /// Запись значения в файл
+        /// </summary>
+        private static void WriteValue(TValue value, string file)
         {
-            if (!Directory.Exists(dir)) return;
-            foreach (var file in Directory.GetFiles(dir))
+            var formatter = new BinaryFormatter();
+            using (var fs = new FileStream(file, FileMode.Create))
             {
-                var innerKey = Uri.UnescapeDataString(file.Split(Path.DirectorySeparatorChar).Last());
-                var value = ReadValue(file, formatter);
-                if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
+                using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
                 {
-                    _storage[key + Path.DirectorySeparatorChar + innerKey] = value;
+                    formatter.Serialize(ds, value);
                 }
             }
         }
 
+        /// <summary>
+        /// Получение пути по ключу
+        /// Путь состоит из двух частей:
+        /// 1) Остаток от хеша ключа
+        /// 2) Экранированое значение самого ключа
+        /// Это сделано для уменьшения количества элементов в одной папке для увеличения производительности
+        /// </summary>
+        /// <param name="key">Ключ</param>
+        /// <returns>Строку вида "число/экранированный_ключ"</returns>
         private static string GetKeyPath(string key)
         {
             var dirName = Math.Abs(key.GetHashCode() % 3000).ToString();
             return dirName + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
         }
 
+        /// <returns>Полный путь к папке, соответствующей данному ключу</returns>
         private string GetFullElementPath(string key)
         {
             var path = _basePath + GetKeyPath(key);
@@ -131,11 +192,15 @@ namespace Kontur.GameStats.Server.Util
             return path;
         }
 
+        /// <returns>Путь к файлу текущей коллекции, в который нужно сохранять значение</returns>
         private string GetFullElementFilename(string path)
         {
             return _noKeyFolder ? path : path + _collectionName;
         }
 
+        /// <summary>
+        /// Получение или добавление значения по ключу
+        /// </summary>
         public TValue this[string key]
         {
             get
@@ -163,6 +228,9 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
+        /// <summary>
+        /// Получение или добавление значения по двойному ключу
+        /// </summary>
         public TValue this[string key1, string key2]
         {
             get
@@ -189,18 +257,15 @@ namespace Kontur.GameStats.Server.Util
             }
         }
 
-        private static void WriteValue(TValue value, string file)
-        {
-            var formatter = new BinaryFormatter();
-            using (var fs = new FileStream(file, FileMode.Create))
-            {
-                using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
-                {
-                    formatter.Serialize(ds, value);
-                }
-            }
-        }
-
+        /// <summary>
+        /// Пытается получить значение, связанное с указанным ключом
+        /// </summary>
+        /// <param name="key">Ключ значения, которое необходимо получить.</param>
+        /// <param name="value">
+        /// Параметр, возвращаемый этим методом, содержит объект из коллекции с 
+        /// заданным ключом или значение по умолчанию, если операцию не удалось выполнить.
+        /// </param>
+        /// <returns>true - если ключ был найден в коллекции, false - если нет</returns>
         public bool TryGetValue(string key, out TValue value)
         {
             if (_memoryMirror)
@@ -211,6 +276,7 @@ namespace Kontur.GameStats.Server.Util
             return !EqualityComparer<TValue>.Default.Equals(value, default(TValue));
         }
 
+        /// <returns>true - если есть значение, соответствующее данному ключу, false - если нет</returns>
         public bool ContainsKey(string key)
         {
             if (_memoryMirror)
@@ -222,6 +288,13 @@ namespace Kontur.GameStats.Server.Util
             return File.Exists(filepath);
         }
 
+        /// <summary>
+        /// Проецирует каждый элемент коллекции из памяти в новую форму
+        /// </summary>
+        /// <returns>Результирующий список</returns>
+        /// <exception cref="InvalidOperationException">
+        /// Выбрасывается при попытке обойти коллекцию, которая не хранится в памяти
+        /// </exception>
         public List<TRes> Select<TRes>(Func<KeyValuePair<string, TValue>, TRes> mapFunc)
         {
             if (!_memoryMirror)

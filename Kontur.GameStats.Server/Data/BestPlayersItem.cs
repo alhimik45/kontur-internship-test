@@ -2,6 +2,9 @@ using System;
 
 namespace Kontur.GameStats.Server.Data
 {
+    /// <summary>
+    /// Класс элемента списка лучших игроков
+    /// </summary>
     [Serializable]
     public class BestPlayersItem
     {

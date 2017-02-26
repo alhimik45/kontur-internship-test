@@ -7,6 +7,9 @@ using Kontur.GameStats.Server.Util;
 
 namespace Kontur.GameStats.Server.Logic
 {
+    /// <summary>
+    /// Класс, управляющий статистикой игроков
+    /// </summary>
     public class PlayerStatistics
     {
         private const string BestPlayersFilename = "Reports/BestPlayers";
@@ -27,6 +30,12 @@ namespace Kontur.GameStats.Server.Logic
             _bestPlayers = Collections.Load<BestPlayersItem>(BestPlayersFilename);
         }
 
+        /// <summary>
+        /// Пересчитывает статистику на основе информации о новом матче
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="info">Информация о матче</param>
         public void AddMatchInfo(string endpoint, string timestamp, MatchInfo info)
         {
             for (var i = 0; i < info.Scoreboard.Count; ++i)
@@ -35,6 +44,7 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <returns>Статистику игрока или null, если статистики по данному игроку нет</returns>
         public PublicPlayerStats GetStats(string name)
         {
             var playerName = name.ToLower();
@@ -46,11 +56,15 @@ namespace Kontur.GameStats.Server.Logic
                     return stats.PublicStats;
                 }
                 object _;
+                //Удаляем объект блокировки, если такого игрока нет - исключает возможность исчерпания памяти из-за
+                //большого количества некорректных запросов
                _locks.TryRemove(playerName, out _);
                 return null;
             }
         }
 
+        /// <param name="count">Количество лучшик игроков</param>
+        /// <returns>Список лучших игроков</returns>
         public List<BestPlayersItem> GetBestPlayers(int count)
         {
             lock (_bestPlayers)
@@ -59,6 +73,13 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <summary>
+        /// Обновляет статистику игрока, основываясь на информации о новом матче
+        /// </summary>
+        /// <param name="endpoint">Уникальный идентификатор сервера</param>
+        /// <param name="timestamp">Временная метка окончания матча</param>
+        /// <param name="index">Индекс игрока в списке игроков</param>
+        /// <param name="matchInfo">Информация о матче</param>
         private void CalcPlayerStats(string endpoint, string timestamp, int index, MatchInfo matchInfo)
         {
             var info = matchInfo.Scoreboard[index];
@@ -85,6 +106,11 @@ namespace Kontur.GameStats.Server.Logic
             }
         }
 
+        /// <summary>
+        /// Обновляет список лучших игроков, основываясь на соотношении убийств к смертям
+        /// </summary>
+        /// <param name="name">Ник игрока</param>
+        /// <param name="info">Статистика игрока</param>
         private void UpdateBestPlayersReport(string name, PublicPlayerStats info)
         {
             lock (_bestPlayers)

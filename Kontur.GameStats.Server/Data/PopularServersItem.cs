@@ -2,6 +2,9 @@
 
 namespace Kontur.GameStats.Server.Data
 {
+    /// <summary>
+    /// Класс элемента списка популярных серверов
+    /// </summary>
     [Serializable]
     public class PopularServersItem
     {

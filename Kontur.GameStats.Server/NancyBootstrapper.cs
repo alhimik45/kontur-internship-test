@@ -8,10 +8,19 @@ using Nancy.TinyIoc;
 
 namespace Kontur.GameStats.Server
 {
+    /// <summary>
+    /// Конфигурация REST-сервера
+    /// </summary>
     public class NancyBootstrapper : DefaultNancyBootstrapper
     {
+        /// <summary>
+        /// Максимальный размер отчётов в /reports/*
+        /// </summary>
         private const int MaxReportSize = 50;
 
+        /// <summary>
+        /// Регистрация зависимостей
+        /// </summary>
         protected override void ConfigureApplicationContainer(TinyIoCContainer container)
         {
             container.Register((c, p) => new ServerStatistics(MaxReportSize));
@@ -19,12 +28,18 @@ namespace Kontur.GameStats.Server
             container.Register<StatisticsManager>().AsSingleton();
         }
 
+        /// <summary>
+        /// Действия при запуске сервера: увеличение максимальной длины ответа
+        /// </summary>
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
             base.ApplicationStartup(container, pipelines);
             Nancy.Json.JsonSettings.MaxJsonLength = int.MaxValue;
         }
 
+        /// <summary>
+        /// Вешаем обработчик ошибок при обработке запроса
+        /// </summary>
         protected override void RequestStartup(TinyIoCContainer container, IPipelines pipelines, NancyContext context)
         {
             base.RequestStartup(container, pipelines, context);
@@ -37,6 +52,9 @@ namespace Kontur.GameStats.Server
             });
         }
 
+        /// <summary>
+        /// Конфигурируем отдавать json по-умолчанию
+        /// </summary>
         protected override NancyInternalConfiguration InternalConfiguration
         {
             get
