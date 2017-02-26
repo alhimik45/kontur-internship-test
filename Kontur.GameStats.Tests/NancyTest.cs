@@ -180,7 +180,7 @@ namespace Kontur.GameStats.Tests
                 .Select(p => new BestPlayersItem
                 {
                     Name = p.Name,
-                    KillToDeathRatio = (double)p.Kills / p.Deaths
+                    KillToDeathRatio = (double)p.Kills.Value / p.Deaths.Value
                 })
                 .Reverse()
                 .ToList();

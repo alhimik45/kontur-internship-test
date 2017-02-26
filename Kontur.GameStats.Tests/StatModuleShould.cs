@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Kontur.GameStats.Server;
@@ -196,6 +195,33 @@ namespace Kontur.GameStats.Tests
             var result = Get(PlayerStatsPath("p1"));
             var info = result.Body.DeserializeJson<PublicPlayerStats>();
             info.ShouldBeEquivalentTo(PlayerStats);
+        }
+
+        [Test]
+        public void return100Scoreboard_onPlayerStatsRequest_withOnePlayer()
+        {
+            SendAdvertise(Endpoints[0], Advertises[0]);
+            SendMatchInfo(Endpoints[0], Timestamps[0], new MatchInfo
+            {
+                GameMode = "gm",
+                FragLimit = 1,
+                Map = "ff",
+                TimeElapsed = 10,
+                TimeLimit = 10,
+                Scoreboard = new List<PlayerMatchInfo>
+                {
+                    new PlayerMatchInfo
+                    {
+                        Name = "p1",
+                        Deaths = 1,
+                        Frags = 1,
+                        Kills = 12
+                    }
+                }
+            });
+            var result = Get(PlayerStatsPath("p1"));
+            var info = result.Body.DeserializeJson<PublicPlayerStats>();
+            info.AverageScoreboardPercent.Should().Be(100);
         }
 
         [Test]

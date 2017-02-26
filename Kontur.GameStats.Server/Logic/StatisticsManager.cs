@@ -31,7 +31,8 @@ namespace Kontur.GameStats.Server.Logic
                 return false;
             }
 
-            _serverStatistics.PutMatch(endpoint, timestamp, info);
+            var matchAdded = _serverStatistics.PutMatch(endpoint, timestamp, info);
+            if (!matchAdded) return false;
             _playerStatistics.AddMatchInfo(endpoint, timestamp, info);
             return true;
         }

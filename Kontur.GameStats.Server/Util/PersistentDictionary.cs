@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -11,30 +10,47 @@ using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
 {
-    public class PersistentDictionary<TValue> : IEnumerable<KeyValuePair<string, TValue>>
+    public class PersistentDictionary<TValue>
     {
         private readonly bool _noKeyFolder;
+        private readonly bool _memoryMirror;
         private readonly string _innerValuesDirName = Path.DirectorySeparatorChar + "Inner";
         private readonly string _collectionName;
         private readonly string _basePath;
-        private readonly ConcurrentDictionary<string, TValue> _storage;
+        private ConcurrentDictionary<string, TValue> _storage;
 
-        public PersistentDictionary(string basePath, string collectionName, bool doubleKey = false, bool noKeyFolder = false)
+        public PersistentDictionary(string basePath, string collectionName, bool doubleKey = false, bool noKeyFolder = false, bool memoryMirror = false)
         {
             _noKeyFolder = noKeyFolder;
+            _memoryMirror = memoryMirror;
             _collectionName = Path.DirectorySeparatorChar + collectionName;
             _basePath = basePath + Path.DirectorySeparatorChar;
-            _storage = new ConcurrentDictionary<string, TValue>();
-            var formatter = new BinaryFormatter();
-            Directory.CreateDirectory(basePath);
-            foreach (var outDir in Directory.GetDirectories(basePath))
+
+            if (memoryMirror)
             {
-                if (noKeyFolder)
+                InitMemoryStorage(doubleKey);
+            }
+        }
+
+        private void InitMemoryStorage(bool doubleKey)
+        {
+            _storage = new ConcurrentDictionary<string, TValue>();
+
+            var formatter = new BinaryFormatter();
+            Directory.CreateDirectory(_basePath);
+
+            foreach (var outDir in Directory.GetDirectories(_basePath))
+            {
+                if (_noKeyFolder)
                 {
                     foreach (var file in Directory.GetFiles(outDir))
                     {
                         var key = GetUnescapedName(file);
-                        ReadValue(file, key, formatter);
+                        var value = ReadValue(file, formatter);
+                        if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
+                        {
+                            _storage[key] = value;
+                        }
                     }
                 }
                 else
@@ -48,11 +64,14 @@ namespace Kontur.GameStats.Server.Util
                         }
                         else
                         {
-                            ReadValue(dir + _collectionName, key, formatter);
+                            var value = ReadValue(dir + _collectionName, formatter);
+                            if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
+                            {
+                                _storage[key] = value;
+                            }
                         }
                     }
                 }
-
             }
         }
 
@@ -61,23 +80,24 @@ namespace Kontur.GameStats.Server.Util
             return Uri.UnescapeDataString(dir.Split(Path.DirectorySeparatorChar).Last());
         }
 
-        private void ReadValue(string file, string key, IFormatter formatter)
+        private static TValue ReadValue(string file, IFormatter formatter)
         {
-            if (!File.Exists(file)) return;
+            if (!File.Exists(file)) return default(TValue);
             try
             {
                 using (var fs = new FileStream(file, FileMode.Open))
                 {
                     using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
                     {
-                        _storage[key] = (TValue)formatter.Deserialize(ds);
+                        return (TValue)formatter.Deserialize(ds);
                     }
                 }
             }
             catch (SerializationException)
             {
-                //if there bad data, delete it
+                //удаляем поврежденные данные
                 File.Delete(file);
+                return default(TValue);
             }
         }
 
@@ -87,21 +107,10 @@ namespace Kontur.GameStats.Server.Util
             foreach (var file in Directory.GetFiles(dir))
             {
                 var innerKey = Uri.UnescapeDataString(file.Split(Path.DirectorySeparatorChar).Last());
-                try
+                var value = ReadValue(file, formatter);
+                if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
                 {
-                    using (var fs = new FileStream(file, FileMode.Open))
-                    {
-                        using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
-                        {
-                            _storage[key + Path.DirectorySeparatorChar + innerKey] =
-                                (TValue)formatter.Deserialize(ds);
-                        }
-                    }
-                }
-                catch (SerializationException)
-                {
-                    //if there bad data, delete it
-                    File.Delete(file);
+                    _storage[key + Path.DirectorySeparatorChar + innerKey] = value;
                 }
             }
         }
@@ -112,75 +121,114 @@ namespace Kontur.GameStats.Server.Util
             return dirName + Path.DirectorySeparatorChar + Uri.EscapeDataString(key);
         }
 
+        private string GetFullElementPath(string key)
+        {
+            var path = _basePath + GetKeyPath(key);
+            if (!_noKeyFolder)
+            {
+                path += Path.DirectorySeparatorChar;
+            }
+            return path;
+        }
+
+        private string GetFullElementFilename(string path)
+        {
+            return _noKeyFolder ? path : path + _collectionName;
+        }
+
         public TValue this[string key]
         {
-            get { return _storage.Get(key); }
+            get
+            {
+                if (_memoryMirror)
+                {
+                    return _storage.Get(key);
+                }
+                var path = GetFullElementPath(key);
+                var filepath = GetFullElementFilename(path);
+                return ReadValue(filepath, new BinaryFormatter());
+            }
             set
             {
-                _storage[key] = value;
-                var path = _basePath;
-                string filepath;
-                if (_noKeyFolder)
+                if (_memoryMirror)
                 {
-                    path += GetKeyPath(key);
-                    filepath = path;
+                    _storage[key] = value;
                 }
-                else
-                {
-                    path += GetKeyPath(key) + Path.DirectorySeparatorChar;
-                    filepath = path + _collectionName;
-                }
+                var path = GetFullElementPath(key);
+                var filepath = GetFullElementFilename(path);
+
                 // ReSharper disable once AssignNullToNotNullAttribute
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                var formatter = new BinaryFormatter();
-                using (var fs = new FileStream(filepath, FileMode.Create))
-                {
-                    using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
-                    {
-                        formatter.Serialize(ds, value);
-                    }
-                }
+                WriteValue(value, filepath);
             }
         }
 
         public TValue this[string key1, string key2]
         {
-            get { return _storage.Get(key1 + Path.DirectorySeparatorChar + key2); }
+            get
+            {
+                var key = key1 + Path.DirectorySeparatorChar + key2;
+                if (_memoryMirror)
+                {
+                    return _storage.Get(key);
+                }
+                var innerPath = _basePath + GetKeyPath(key1) + _innerValuesDirName;
+                var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key2);
+                return ReadValue(innerFile, new BinaryFormatter());
+            }
             set
             {
-                _storage[key1 + Path.DirectorySeparatorChar + key2] = value;
+                if (_memoryMirror)
+                {
+                    _storage[key1 + Path.DirectorySeparatorChar + key2] = value;
+                }
                 var innerPath = _basePath + GetKeyPath(key1) + _innerValuesDirName;
                 var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key2);
                 Directory.CreateDirectory(innerPath);
-                var formatter = new BinaryFormatter();
-                using (var fs = new FileStream(innerFile, FileMode.Create))
+                WriteValue(value, innerFile);
+            }
+        }
+
+        private static void WriteValue(TValue value, string file)
+        {
+            var formatter = new BinaryFormatter();
+            using (var fs = new FileStream(file, FileMode.Create))
+            {
+                using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
                 {
-                    using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
-                    {
-                        formatter.Serialize(ds, value);
-                    }
+                    formatter.Serialize(ds, value);
                 }
             }
         }
 
         public bool TryGetValue(string key, out TValue value)
         {
-            return _storage.TryGetValue(key, out value);
+            if (_memoryMirror)
+            {
+                return _storage.TryGetValue(key, out value);
+            }
+            value = this[key];
+            return !EqualityComparer<TValue>.Default.Equals(value, default(TValue));
         }
 
         public bool ContainsKey(string key)
         {
-            return _storage.ContainsKey(key);
+            if (_memoryMirror)
+            {
+                return _storage.ContainsKey(key);
+            }
+            var path = GetFullElementPath(key);
+            var filepath = GetFullElementFilename(path);
+            return File.Exists(filepath);
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        public List<TRes> Select<TRes>(Func<KeyValuePair<string, TValue>, TRes> mapFunc)
         {
-            return GetEnumerator();
-        }
-
-        public IEnumerator<KeyValuePair<string, TValue>> GetEnumerator()
-        {
-            return _storage.GetEnumerator();
+            if (!_memoryMirror)
+            {
+                throw new InvalidOperationException("Cannot enumerate collection that not in memory");
+            }
+            return _storage.Select(mapFunc).ToList();
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,7 +25,6 @@ namespace Kontur.GameStats.Server.Logic
 
             Directory.CreateDirectory("Reports");
             _bestPlayers = Collections.Load<BestPlayersItem>(BestPlayersFilename);
-            Console.WriteLine("rdy");
         }
 
         public void AddMatchInfo(string endpoint, string timestamp, MatchInfo info)
@@ -39,7 +37,18 @@ namespace Kontur.GameStats.Server.Logic
 
         public PublicPlayerStats GetStats(string name)
         {
-            return _stats[name.ToLower()]?.PublicStats;
+            var playerName = name.ToLower();
+            lock (_locks.GetOrAdd(playerName, _ => new object()))
+            {
+                var stats = _stats[playerName];
+                if (stats != null)
+                {
+                    return stats.PublicStats;
+                }
+                object _;
+               _locks.TryRemove(playerName, out _);
+                return null;
+            }
         }
 
         public List<BestPlayersItem> GetBestPlayers(int count)
@@ -54,10 +63,10 @@ namespace Kontur.GameStats.Server.Logic
         {
             var info = matchInfo.Scoreboard[index];
             var playerName = info.Name.ToLower();
+            var place = index + 1;
 
             lock (_locks.GetOrAdd(playerName, _ => new object()))
             {
-                var place = index + 1;
                 PlayerStats oldStats;
                 if (!_stats.TryGetValue(playerName, out oldStats))
                 {

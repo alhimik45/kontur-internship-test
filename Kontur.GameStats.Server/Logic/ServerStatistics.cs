@@ -26,13 +26,12 @@ namespace Kontur.GameStats.Server.Logic
         {
             _maxReportSize = maxReportSize;
 
-            _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise");
-            _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats");
+            _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise", memoryMirror: true);
+            _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats", memoryMirror: true);
             _matches = new PersistentDictionary<MatchInfo>("Servers", "Match", doubleKey: true);
             Directory.CreateDirectory("Reports");
             _recentMatches = Collections.Load<RecentMatchesItem>(RecentMatchesFilename);
             _popularServers = Collections.Load<PopularServersItem>(PopularServersFilename);
-            Console.WriteLine("rdys");
         }
 
         public void PutAdvertise(string endpoint, AdvertiseInfo info)
@@ -56,28 +55,35 @@ namespace Kontur.GameStats.Server.Logic
 
         public List<ServersInfoItem> GetAll()
         {
-            return _servers
-                .Select(kv => new ServersInfoItem
-                {
-                    Endpoint = kv.Key,
-                    Info = kv.Value
-                })
-                .ToList();
+            return _servers.Select(kv => new ServersInfoItem
+            {
+                Endpoint = kv.Key,
+                Info = kv.Value
+            });
         }
 
-        public void PutMatch(string endpoint, string timestamp, MatchInfo info)
+        public bool PutMatch(string endpoint, string timestamp, MatchInfo info)
         {
             var lowerEndpoint = endpoint.ToLower();
             lock (_locks.GetOrAdd(lowerEndpoint, _ => new object()))
             {
+                if (_matches[lowerEndpoint, timestamp] != null)
+                {
+                    return false;
+                }
                 _matches[lowerEndpoint, timestamp] = info;
                 CalcStats(lowerEndpoint, timestamp, info);
+                return true;
             }
         }
 
         public MatchInfo GetMatch(string endpoint, string timestamp)
         {
-            return _matches[endpoint.ToLower(), timestamp];
+            var lowerEndpoint = endpoint.ToLower();
+            lock (_locks.GetOrAdd(lowerEndpoint, _ => new object()))
+            {
+                return _matches[lowerEndpoint, timestamp];
+            }
         }
 
         public PublicServerStats GetStats(string endpoint)

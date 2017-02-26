@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using Kontur.GameStats.Server.Util;
+// ReSharper disable PossibleInvalidOperationException
 
 namespace Kontur.GameStats.Server.Data
 {
@@ -19,12 +20,20 @@ namespace Kontur.GameStats.Server.Data
         {
             var totalPlayers = matchInfo.Scoreboard.Count;
             var playersBelowCurrent = totalPlayers - place;
-            var scoreboardPercent = (double)playersBelowCurrent / (totalPlayers - 1) * 100;
+            double scoreboardPercent;
+            if (totalPlayers == 1)
+            {
+                scoreboardPercent = 100;
+            }
+            else
+            {
+                scoreboardPercent = (double)playersBelowCurrent / (totalPlayers - 1) * 100;
+            }
             MatchesPerDay[time.Date] = MatchesPerDay.Get(time.Date) + 1;
             return new PlayerStats
             {
-                TotalDeaths = TotalDeaths + info.Deaths,
-                TotalKills = TotalKills + info.Kills,
+                TotalDeaths = TotalDeaths + info.Deaths.Value,
+                TotalKills = TotalKills + info.Kills.Value,
                 TotalScoreboard = TotalScoreboard + scoreboardPercent,
                 MatchesPerDay = MatchesPerDay,
                 ServerFrequency = ServerFrequency,

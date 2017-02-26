@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Kontur.GameStats.Server.Data
 {
@@ -16,7 +17,8 @@ namespace Kontur.GameStats.Server.Data
         public bool IsNotFull()
         {
             return Map == null || GameMode == null || FragLimit == null ||
-                TimeLimit == null || TimeElapsed == null || Scoreboard == null;
+                TimeLimit == null || TimeElapsed == null || Scoreboard == null ||
+                Scoreboard.Any(info => info.IsNotFull());
         }
     }
 }
