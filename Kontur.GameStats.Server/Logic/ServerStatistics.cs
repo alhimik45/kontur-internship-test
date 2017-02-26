@@ -10,6 +10,8 @@ namespace Kontur.GameStats.Server.Logic
 {
     public class ServerStatistics
     {
+        private const string PopularServersFilename = "Reports/PopularServers";
+        private const string RecentMatchesFilename = "Reports/RecentMatches";
         private readonly int _maxReportSize;
 
         private readonly PersistentDictionary<AdvertiseInfo> _servers;
@@ -27,26 +29,9 @@ namespace Kontur.GameStats.Server.Logic
             _servers = new PersistentDictionary<AdvertiseInfo>("Servers", "Advertise");
             _stats = new PersistentDictionary<ServerStats>("Servers", "ServerStats");
             _matches = new PersistentDictionary<MatchInfo>("Servers", "Match", doubleKey: true);
-            _recentMatches =_matches
-                .OrderByDescending(kv => kv.Key.Split(Path.DirectorySeparatorChar).Last().ToUtc())
-                .Select(kv => new RecentMatchesItem
-                {
-                    Server = kv.Key.Split(Path.DirectorySeparatorChar).First(),
-                    Timestamp = kv.Key.Split(Path.DirectorySeparatorChar).Last(),
-                    Results = kv.Value
-                })
-                .Take(maxReportSize)
-                .ToList();
-            _popularServers = _stats
-                .OrderByDescending(kv => kv.Value.PublicStats.AverageMatchesPerDay)
-                .Select(kv => new PopularServersItem
-                {
-                    Endpoint = kv.Key,
-                    Name = _servers[kv.Key].Name,
-                    AverageMatchesPerDay = kv.Value.PublicStats.AverageMatchesPerDay
-                })
-                .Take(maxReportSize)
-                .ToList();
+            Directory.CreateDirectory("Reports");
+            _recentMatches = Collections.Load<RecentMatchesItem>(RecentMatchesFilename);
+            _popularServers = Collections.Load<PopularServersItem>(PopularServersFilename);
             Console.WriteLine("rdys");
         }
 
@@ -152,6 +137,7 @@ namespace Kontur.GameStats.Server.Logic
                         Timestamp = timestamp,
                         Results = info
                     });
+                Collections.Save(_recentMatches, RecentMatchesFilename);
             }
         }
 
@@ -168,6 +154,7 @@ namespace Kontur.GameStats.Server.Logic
                         Name = serverName,
                         AverageMatchesPerDay = info.AverageMatchesPerDay
                     });
+                Collections.Save(_popularServers, PopularServersFilename);
             }
         }
     }

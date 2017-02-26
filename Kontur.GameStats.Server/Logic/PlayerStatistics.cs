@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Kontur.GameStats.Server.Data;
 using Kontur.GameStats.Server.Util;
@@ -9,6 +10,7 @@ namespace Kontur.GameStats.Server.Logic
 {
     public class PlayerStatistics
     {
+        private const string BestPlayersFilename = "Reports/BestPlayers";
         private readonly int _maxReportSize;
 
         private readonly PersistentDictionary<PlayerStats> _stats;
@@ -22,16 +24,8 @@ namespace Kontur.GameStats.Server.Logic
 
             _stats = new PersistentDictionary<PlayerStats>("Players", "PlayerStats", noKeyFolder: true);
 
-            _bestPlayers = _stats
-                .Where(kv => kv.Value.PublicStats.TotalMatchesPlayed >= 10 && _stats[kv.Key].TotalDeaths != 0)
-                .OrderByDescending(kv => kv.Value.PublicStats.KillToDeathRatio)
-                .Select(kv => new BestPlayersItem
-                {
-                    Name = kv.Key,
-                    KillToDeathRatio = kv.Value.PublicStats.KillToDeathRatio
-                })
-                .Take(maxReportSize)
-                .ToList();
+            Directory.CreateDirectory("Reports");
+            _bestPlayers = Collections.Load<BestPlayersItem>(BestPlayersFilename);
             Console.WriteLine("rdy");
         }
 
@@ -94,6 +88,7 @@ namespace Kontur.GameStats.Server.Logic
                         Name = name,
                         KillToDeathRatio = info.KillToDeathRatio
                     });
+                Collections.Save(_bestPlayers, BestPlayersFilename);
             }
         }
     }

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Kontur.GameStats.Server;
@@ -13,16 +12,9 @@ namespace Kontur.GameStats.Tests
     public class PersistenceTest : NancyTest
     {
         [OneTimeSetUp]
-        public void DeleteDb()
+        public new void DeleteData()
         {
-            if (Directory.Exists("Servers"))
-            {
-                Directory.Delete("Servers", true);
-            }
-            if (Directory.Exists("Players"))
-            {
-                Directory.Delete("Players", true);
-            }
+            NancyTest.DeleteData();
         }
 
         [SetUp]
@@ -35,7 +27,7 @@ namespace Kontur.GameStats.Tests
         [TearDown]
         public void TearDown()
         {
-            DeleteDb();
+            DeleteData();
         }
 
         private void DisposeModule()

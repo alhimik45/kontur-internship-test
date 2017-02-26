@@ -92,6 +92,7 @@
     <Compile Include="Data\MatchInfo.cs" />
     <Compile Include="Data\AdvertiseInfo.cs" />
     <Compile Include="Data\PlayerMatchInfo.cs" />
+    <Compile Include="Util\Collections.cs" />
     <Compile Include="Util\CollectionExtensions.cs" />
     <Compile Include="Util\StringExtensions.cs" />
     <Compile Include="PageNotFoundHandler.cs" />

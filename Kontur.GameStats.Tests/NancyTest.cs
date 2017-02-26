@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Kontur.GameStats.Server;
 using Kontur.GameStats.Server.Data;
@@ -20,6 +21,22 @@ namespace Kontur.GameStats.Tests
         protected readonly Func<string, string> PlayerStatsPath = name => $"/players/{name}/stats";
         protected readonly Func<string, string> AdvertisePath = endpoint => $"/servers/{endpoint}/info";
         protected readonly Func<string, string, string> MatchInfoPath = (endpoint, timestamp) => $"/servers/{endpoint}/matches/{timestamp}";
+
+        protected static void DeleteData()
+        {
+            if (Directory.Exists("Servers"))
+            {
+                Directory.Delete("Servers", true);
+            }
+            if (Directory.Exists("Players"))
+            {
+                Directory.Delete("Players", true);
+            }
+            if (Directory.Exists("Reports"))
+            {
+                Directory.Delete("Reports", true);
+            }
+        }
 
         protected BrowserResponse Get(string path)
         {

@@ -16,14 +16,7 @@ namespace Kontur.GameStats.Tests
         [SetUp]
         public void SetUp()
         {
-            if (Directory.Exists("Servers"))
-            {
-                Directory.Delete("Servers", true);
-            }
-            if (Directory.Exists("Players"))
-            {
-                Directory.Delete("Players", true);
-            }
+            DeleteData();
             Bootstrapper = new NancyBootstrapper();
             Browser = new Browser(Bootstrapper);
         }
