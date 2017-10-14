@@ -1,5 +1,11 @@
-﻿namespace Kontur.GameStats.Server.Data
+﻿using System;
+
+namespace Kontur.GameStats.Server.Data
 {
+    /// <summary>
+    /// Класс элемента списка недавних матчей
+    /// </summary>
+    [Serializable]
     public class RecentMatchesItem
     {
         public string Server { get; set; }

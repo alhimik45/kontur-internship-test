@@ -1,6 +1,5 @@
 ﻿using System;
 using Kontur.GameStats.Server.Logic;
-using LiteDB;
 using Nancy;
 using Nancy.Bootstrapper;
 using Nancy.Responses;
@@ -9,38 +8,38 @@ using Nancy.TinyIoc;
 
 namespace Kontur.GameStats.Server
 {
+    /// <summary>
+    /// Конфигурация REST-сервера
+    /// </summary>
     public class NancyBootstrapper : DefaultNancyBootstrapper
     {
-        private readonly LiteDatabase _dbPlayers;
-        private readonly LiteDatabase _dbServers;
+        /// <summary>
+        /// Максимальный размер отчётов в /reports/*
+        /// </summary>
         private const int MaxReportSize = 50;
 
-        public NancyBootstrapper(string dbName = "data")
-        {
-            _dbPlayers = new LiteDatabase($"{dbName}-players.db");
-            _dbServers = new LiteDatabase($"{dbName}-servers.db");
-        }
-
+        /// <summary>
+        /// Регистрация зависимостей
+        /// </summary>
         protected override void ConfigureApplicationContainer(TinyIoCContainer container)
         {
-            container.Register((c, p) => new ServerStatistics(_dbServers, MaxReportSize));
-            container.Register((c, p) => new PlayerStatistics(_dbPlayers, MaxReportSize));
+            container.Register((c, p) => new ServerStatistics(MaxReportSize));
+            container.Register((c, p) => new PlayerStatistics(MaxReportSize));
             container.Register<StatisticsManager>().AsSingleton();
         }
 
-        public new void Dispose()
-        {
-            base.Dispose();
-            _dbPlayers.Dispose();
-            _dbServers.Dispose();
-        }
-
+        /// <summary>
+        /// Действия при запуске сервера: увеличение максимальной длины ответа
+        /// </summary>
         protected override void ApplicationStartup(TinyIoCContainer container, IPipelines pipelines)
         {
             base.ApplicationStartup(container, pipelines);
             Nancy.Json.JsonSettings.MaxJsonLength = int.MaxValue;
         }
 
+        /// <summary>
+        /// Вешаем обработчик ошибок при обработке запроса
+        /// </summary>
         protected override void RequestStartup(TinyIoCContainer container, IPipelines pipelines, NancyContext context)
         {
             base.RequestStartup(container, pipelines, context);
@@ -53,6 +52,9 @@ namespace Kontur.GameStats.Server
             });
         }
 
+        /// <summary>
+        /// Конфигурируем отдавать json по-умолчанию
+        /// </summary>
         protected override NancyInternalConfiguration InternalConfiguration
         {
             get

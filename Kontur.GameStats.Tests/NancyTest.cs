@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Kontur.GameStats.Server;
 using Kontur.GameStats.Server.Data;
@@ -20,6 +21,22 @@ namespace Kontur.GameStats.Tests
         protected readonly Func<string, string> PlayerStatsPath = name => $"/players/{name}/stats";
         protected readonly Func<string, string> AdvertisePath = endpoint => $"/servers/{endpoint}/info";
         protected readonly Func<string, string, string> MatchInfoPath = (endpoint, timestamp) => $"/servers/{endpoint}/matches/{timestamp}";
+
+        protected static void DeleteData()
+        {
+            if (Directory.Exists("Servers"))
+            {
+                Directory.Delete("Servers", true);
+            }
+            if (Directory.Exists("Players"))
+            {
+                Directory.Delete("Players", true);
+            }
+            if (Directory.Exists("Reports"))
+            {
+                Directory.Delete("Reports", true);
+            }
+        }
 
         protected BrowserResponse Get(string path)
         {
@@ -163,7 +180,7 @@ namespace Kontur.GameStats.Tests
                 .Select(p => new BestPlayersItem
                 {
                     Name = p.Name,
-                    KillToDeathRatio = (double)p.Kills / p.Deaths
+                    KillToDeathRatio = (double)p.Kills.Value / p.Deaths.Value
                 })
                 .Reverse()
                 .ToList();
@@ -217,12 +234,12 @@ namespace Kontur.GameStats.Tests
         {
             new AdvertiseInfo
             {
-                Name = "Server",
+                Name = "server",
                 GameModes = new List<string> { "DM", "TDM", "CTF" }
             },
             new AdvertiseInfo
             {
-                Name = "Server2",
+                Name = "server2",
                 GameModes = new List<string> { "35hp", "ZE" }
             },
             new AdvertiseInfo
@@ -496,7 +513,7 @@ namespace Kontur.GameStats.Tests
             }
         };
 
-        protected readonly ServerStatsInfo ServerStats = new ServerStatsInfo
+        protected readonly PublicServerStats ServerStats = new PublicServerStats
         {
             AverageMatchesPerDay = 7.0 / 3,
             AveragePopulation = 20 / 7.0,
@@ -517,7 +534,7 @@ namespace Kontur.GameStats.Tests
         };
 
         //stats of "p1" player
-        protected readonly PlayerStatsInfo PlayerStats = new PlayerStatsInfo
+        protected readonly PublicPlayerStats PlayerStats = new PublicPlayerStats
         {
             TotalMatchesPlayed = 6,
             TotalMatchesWon = 4,

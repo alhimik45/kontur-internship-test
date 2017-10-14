@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Kontur.GameStats.Server;
@@ -16,11 +15,8 @@ namespace Kontur.GameStats.Tests
         [SetUp]
         public void SetUp()
         {
-            const string dbName = "StatModuleTest";
-            File.Delete($"{dbName}-players.db");
-            File.Delete($"{dbName}-servers.db");
-            File.Delete($"{dbName}-journal.db");
-            Bootstrapper = new NancyBootstrapper(dbName);
+            DeleteData();
+            Bootstrapper = new NancyBootstrapper();
             Browser = new Browser(Bootstrapper);
         }
 
@@ -177,11 +173,22 @@ namespace Kontur.GameStats.Tests
         }
 
         [Test]
+        public void returnBadRequest_onPuttingMatchInfo_atAlreadyUserTimestamp()
+        {
+            SendAdvertise(Endpoints[0], Advertises[0]);
+            SendMatchInfo(Endpoints[0], Timestamps[0], Matches[0]);
+
+            var result = SendMatchInfo(Endpoints[0], Timestamps[0], Matches[1]);
+
+            result.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Test]
         public void returnStats_onServerStatsRequest_afterSendingData()
         {
             SendStatsTestData();
             var result = Get(ServerStatsPath(Endpoints[0]));
-            var info = result.Body.DeserializeJson<ServerStatsInfo>();
+            var info = result.Body.DeserializeJson<PublicServerStats>();
             info.ShouldBeEquivalentTo(ServerStats, options => options.WithStrictOrdering());
         }
 
@@ -197,8 +204,35 @@ namespace Kontur.GameStats.Tests
         {
             SendStatsTestData();
             var result = Get(PlayerStatsPath("p1"));
-            var info = result.Body.DeserializeJson<PlayerStatsInfo>();
+            var info = result.Body.DeserializeJson<PublicPlayerStats>();
             info.ShouldBeEquivalentTo(PlayerStats);
+        }
+
+        [Test]
+        public void return100Scoreboard_onPlayerStatsRequest_withOnePlayer()
+        {
+            SendAdvertise(Endpoints[0], Advertises[0]);
+            SendMatchInfo(Endpoints[0], Timestamps[0], new MatchInfo
+            {
+                GameMode = "gm",
+                FragLimit = 1,
+                Map = "ff",
+                TimeElapsed = 10,
+                TimeLimit = 10,
+                Scoreboard = new List<PlayerMatchInfo>
+                {
+                    new PlayerMatchInfo
+                    {
+                        Name = "p1",
+                        Deaths = 1,
+                        Frags = 1,
+                        Kills = 12
+                    }
+                }
+            });
+            var result = Get(PlayerStatsPath("p1"));
+            var info = result.Body.DeserializeJson<PublicPlayerStats>();
+            info.AverageScoreboardPercent.Should().Be(100);
         }
 
         [Test]

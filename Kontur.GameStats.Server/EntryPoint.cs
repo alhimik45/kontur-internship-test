@@ -5,14 +5,11 @@ using Microsoft.Owin.Hosting;
 
 namespace Kontur.GameStats.Server
 {
+    /// <summary>
+    /// Точка входа в приложение
+    /// </summary>
     public class EntryPoint
     {
-        class S
-        {
-            public int Id { get; set; }
-            public string V { get; set; }
-        }
-
         public static void Main(string[] args)
         {
             var commandLineParser = new FluentCommandLineParser<Options>();
@@ -33,37 +30,12 @@ namespace Kontur.GameStats.Server
 
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;
 
-            //var db = new LiteDatabase("test.db");
-            //var c = new PersistentDictionary<int, int>(db, "kek");
-            //var tt = new List<Thread>();
-            //for (int i = 0; i < 50; i++)
-            //{
-            //    var ii = i;
-            //    var t = new Thread(() =>
-            //    {
-            //        using (var trans = db.BeginTrans())
-            //        {
-            //            var r = new Random();
-            //            for (int j = 0; j < 5000; j++)
-            //            {
-            //                c[r.Next(500)] = r.Next();
-            //                //coll.Upsert(new S() { Id = r.Next(100), V = "str" });
-            //                //Thread.Sleep(r.Next(1500));
-            //            }
-            //            trans.Commit();
-            //        }
-            //    });
-            //    t.Start();
-            //    tt.Add(t);
-            //}
-            //foreach (var thread in tt)
-            //{
-            //    thread.Join();
-            //}
-
             RunServer(commandLineParser.Object);
         }
 
+        /// <summary>
+        /// Метод вызываемый при перехвате необработанного исключения
+        /// </summary>
         private static void UnhandledExceptionTrapper(object sender, UnhandledExceptionEventArgs e)
         {
             Console.Error.WriteLine("Unexepected error occured");
@@ -71,6 +43,9 @@ namespace Kontur.GameStats.Server
             Environment.Exit(1);
         }
 
+        /// <summary>
+        /// Запуск REST-сервера
+        /// </summary>
         private static void RunServer(Options options)
         {
             try
@@ -84,6 +59,7 @@ namespace Kontur.GameStats.Server
             {
                 Console.Error.WriteLine("Error starting server");
                 Console.Error.WriteLine(e.InnerException?.Message ?? e.Message);
+                Console.Error.WriteLine(e.InnerException?.StackTrace ?? e.StackTrace);
             }
         }
 
