@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using Newtonsoft.Json;
 
 namespace Kontur.GameStats.Server.Util
 {
@@ -12,12 +13,12 @@ namespace Kontur.GameStats.Server.Util
         /// </summary>
         public static void Save<T>(List<T> collection, string filename)
         {
-            var formatter = new BinaryFormatter();
             using (var fs = new FileStream(filename, FileMode.Create))
             {
                 using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
                 {
-                    formatter.Serialize(ds, collection);
+	                var b = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(collection));
+					ds.Write(b, 0, b.Length);
                 }
             }
         }
@@ -28,13 +29,15 @@ namespace Kontur.GameStats.Server.Util
         /// <returns>Загруженную коллекцию</returns>
         public static List<T> Load<T>(string filename)
         {
-            var formatter = new BinaryFormatter();
             if(!File.Exists(filename)) return new List<T>();
             using (var fs = new FileStream(filename, FileMode.Open))
             {
                 using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
                 {
-                    return (List<T>) formatter.Deserialize(ds);
+	                using (var sr = new StreamReader(ds, Encoding.UTF8))
+	                {
+						return JsonConvert.DeserializeObject<List<T>>(sr.ReadToEnd());
+					}
                 }
             }
         }

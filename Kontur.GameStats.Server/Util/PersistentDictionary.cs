@@ -5,7 +5,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using Newtonsoft.Json;
 using FileMode = System.IO.FileMode;
 
 namespace Kontur.GameStats.Server.Util
@@ -56,7 +57,6 @@ namespace Kontur.GameStats.Server.Util
         {
             _storage = new ConcurrentDictionary<string, TValue>();
 
-            var formatter = new BinaryFormatter();
             Directory.CreateDirectory(_basePath);
 
             foreach (var outDir in Directory.GetDirectories(_basePath))
@@ -66,7 +66,7 @@ namespace Kontur.GameStats.Server.Util
                     foreach (var file in Directory.GetFiles(outDir))
                     {
                         var key = GetUnescapedName(file);
-                        var value = ReadValue(file, formatter);
+                        var value = ReadValue(file);
                         if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
                         {
                             _storage[key] = value;
@@ -80,11 +80,11 @@ namespace Kontur.GameStats.Server.Util
                         var key = GetUnescapedName(dir);
                         if (doubleKey)
                         {
-                            ReadInnerValues(dir + _innerValuesDirName, key, formatter);
+                            ReadInnerValues(dir + _innerValuesDirName, key);
                         }
                         else
                         {
-                            var value = ReadValue(dir + _collectionName, formatter);
+                            var value = ReadValue(dir + _collectionName);
                             if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
                             {
                                 _storage[key] = value;
@@ -109,14 +109,13 @@ namespace Kontur.GameStats.Server.Util
         /// </summary>
         /// <param name="dir">Путь до папки считывания</param>
         /// <param name="key">Первый клбч из двух</param>
-        /// <param name="formatter">Десериализатор</param>
-        private void ReadInnerValues(string dir, string key, IFormatter formatter)
+        private void ReadInnerValues(string dir, string key)
         {
             if (!Directory.Exists(dir)) return;
             foreach (var file in Directory.GetFiles(dir))
             {
                 var innerKey = Uri.UnescapeDataString(file.Split(Path.DirectorySeparatorChar).Last());
-                var value = ReadValue(file, formatter);
+                var value = ReadValue(file);
                 if (!EqualityComparer<TValue>.Default.Equals(value, default(TValue)))
                 {
                     _storage[key + Path.DirectorySeparatorChar + innerKey] = value;
@@ -128,9 +127,8 @@ namespace Kontur.GameStats.Server.Util
         /// Чтение значения из файла
         /// </summary>
         /// <param name="file">Путь к файлу</param>
-        /// <param name="formatter">Десериализатор</param>
         /// <returns>Десериализованное значение или значение по-умолчанию, если считать не удалось</returns>
-        private static TValue ReadValue(string file, IFormatter formatter)
+        private static TValue ReadValue(string file)
         {
             if (!File.Exists(file)) return default(TValue);
             try
@@ -139,8 +137,11 @@ namespace Kontur.GameStats.Server.Util
                 {
                     using (var ds = new DeflateStream(fs, CompressionMode.Decompress))
                     {
-                        return (TValue)formatter.Deserialize(ds);
-                    }
+						using (var sr = new StreamReader(ds, Encoding.UTF8))
+						{
+							return JsonConvert.DeserializeObject<TValue>(sr.ReadToEnd());
+						}
+					}
                 }
             }
             catch (SerializationException)
@@ -156,12 +157,12 @@ namespace Kontur.GameStats.Server.Util
         /// </summary>
         private static void WriteValue(TValue value, string file)
         {
-            var formatter = new BinaryFormatter();
             using (var fs = new FileStream(file, FileMode.Create))
             {
                 using (var ds = new DeflateStream(fs, CompressionLevel.Fastest))
                 {
-                    formatter.Serialize(ds, value);
+	                var b = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
+	                ds.Write(b, 0, b.Length);
                 }
             }
         }
@@ -211,7 +212,7 @@ namespace Kontur.GameStats.Server.Util
                 }
                 var path = GetFullElementPath(key);
                 var filepath = GetFullElementFilename(path);
-                return ReadValue(filepath, new BinaryFormatter());
+                return ReadValue(filepath);
             }
             set
             {
@@ -242,7 +243,7 @@ namespace Kontur.GameStats.Server.Util
                 }
                 var innerPath = _basePath + GetKeyPath(key1) + _innerValuesDirName;
                 var innerFile = innerPath + Path.DirectorySeparatorChar + Uri.EscapeDataString(key2);
-                return ReadValue(innerFile, new BinaryFormatter());
+                return ReadValue(innerFile);
             }
             set
             {

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using Fclp;
 using Microsoft.Owin.Hosting;
@@ -52,7 +54,15 @@ namespace Kontur.GameStats.Server
             {
                 using (WebApp.Start<Startup>(options.Prefix))
                 {
-                    Console.Read();
+	                var p =Process.Start(new ProcessStartInfo(@"cmd.exe")
+	                {
+		                Arguments = @"/C node E:\swap\t\node_modules\.bin\bench-rest -n 100 -c 20 E:\swap\t\i.js",
+						RedirectStandardOutput = true,
+						UseShellExecute = false
+					});
+	               p.StandardOutput.BaseStream.CopyToAsync(Console.OpenStandardOutput());
+	                p.WaitForExit();
+	               // Console.WriteLine(p.StandardOutput.ReadToEnd());
                 }
             }
             catch (TargetInvocationException e)
